@@ -12,7 +12,7 @@ The timer utilizes the Waveshare 1.28-inch round touch display, allowing for con
 
 ## Hardware Requirements 
 * Raspberry Pico
-* Waveshare 1.28-inch round touch display
+* Waveshare 1.28-inch round touch display (https://www.waveshare.com/1.28inch-touch-lcd.htm)
 
 Following setup instructions for the display, connecting it to the required pins on the pico, these should be as follows although may vary depending on implementation.
 
