@@ -11,3 +11,5 @@ The timer is designed to support common session lengths, making it quick and eas
 The timer utilizes the Waveshare 1.28-inch round touch display, allowing for configuration and operation through intuitive swipe gestures.
 
 ## Hardware Requirements 
+* Raspberry Pico
+* Waveshare 1.28-inch round touch display
