@@ -30,3 +30,12 @@ Following setup instructions for the display, connecting it to the required pins
 * TP_SCL  ->      7
 * TP_INT  ->      16
 * TP_RST  ->      17
+
+## Setup
+The instructions enable the software on the required hardware.   These instructions do not cover the physical installation or support for the hardware. 
+### Pico
+* Ensure you rcomputer has the Python (.py) files and also the latest uf2 file (soure from Raspberry foundation)
+* Press and hold the BOOTSEL button 
+* Connect the Pico to your computer via the appropriate USB cable, after connecting release the BOOTSEL button, the PICO should be mounted to your filesystem.
+* Copy the .py files
+* Copy the uf2 file, the Pico should restart, and the timer automatically starts.
