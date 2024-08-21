@@ -7,7 +7,7 @@ Trackday or race session timer.
 * Greater control over session settings, includes ability to define track session length and rest session length.
 * Improved UI colours for 85% and 95% session expiry.
 
-See user guide below. 
+See user guide.
 
 ### Fixes
 * Incorrect pin out. 
@@ -50,3 +50,5 @@ The instructions enable the software on the required hardware.   These instructi
 * Connect the Pico to your computer via the appropriate USB cable, after connecting release the BOOTSEL button, the PICO should be mounted to your filesystem.
 * Copy the .py files
 * Copy the uf2 file, the Pico should restart, and the timer automatically starts.
+
+
