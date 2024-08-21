@@ -2,6 +2,11 @@
 ## Version 2
 Trackday or race session timer.
 
+### Improvements
+* Faster UI and more responsive touch screen.
+* Greater control over session settings, includes ability to define track session length and rest session length.
+* Improved UI colours for 85% and 95% session expiry.
+
 ## Background
 Managing time on the track can be challenging, whether it's during a track day or a race. Many competitors in the Seven category use kitchen timers mounted on their dashboards. However, these timers can be large, awkward, and difficult to read, requiring drivers to interpret small digits mid-race.
 
