@@ -9,14 +9,13 @@ I2C_SDL = 7
 I2C_INT = 17
 I2C_RST = 16
 
-DC = 14
+DC = 8
 CS = 9
 SCK = 10
 MOSI = 11
 MISO = 12
-RST = 8
-
-BL = 15
+RST = 13
+BL = 25
 
 #LCD Driver  LCD
 class LCD_1inch28(framebuf.FrameBuffer):
