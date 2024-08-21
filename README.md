@@ -1,4 +1,5 @@
-# TrackSessionTimer
+# Track Session Timer
+## Version 2
 Trackday or race session timer.
 
 ## Background
