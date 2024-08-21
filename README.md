@@ -7,6 +7,8 @@ Trackday or race session timer.
 * Greater control over session settings, includes ability to define track session length and rest session length.
 * Improved UI colours for 85% and 95% session expiry.
 
+See user guide below. 
+
 ### Fixes
 * Incorrect pin out. 
 
