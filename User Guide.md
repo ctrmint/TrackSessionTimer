@@ -1,7 +1,7 @@
 # User Guide
 
 ## General / Sessions Use
-The following describes general operation of both the ``Track Session`` and ``Rest in Pits  Session``.
+The following describes general operation of both the ``Track Session`` and ``Rest in Pits Session`` timer.
 
 * Upon start up a boot splash will be shown for 2 seconds.
 * After which the ``Primary Screen`` will be shown, detailing the current track session duration in minutes, and the statement ``Ready``.  This indicates the timer is ready to start.  To start the ``Track Session`` or race, ``Swipe Down``.
