@@ -19,6 +19,8 @@ class SessionTracker():
         self.live: Optional[bool] = live
         self.debug: bool = debug
         self.alarm: Optional[str] = None
+        if self.duration_mins is None:
+            self.duration_mins = 20
     
     def update_duration(self, mins):
         """
