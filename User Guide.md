@@ -15,3 +15,4 @@
 ## Configuration / Setup 
 It is possible to change the duration of both the ``Track Session`` and the ``Rest in Pits``.
 * From the ``Primary Screen``, ``Swipe Left`` to edit the ``Track Session`` and ``Swipe Right`` to edit the ``Rest in Pits  Session``.
+* Once in either edit modes, use a ``Swipe Right`` to increment the duration and a ``Swipe Left`` to decrement the value.  Note values are predefined as [1, 5, 10, 15, 20, 25, 30, 40, 50, 60]
