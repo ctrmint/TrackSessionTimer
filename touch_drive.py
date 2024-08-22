@@ -105,14 +105,14 @@ class Touch_CST816T(object):
         if self.l > 100:
             self.l = 50
 
-    def BootScreen(self, LCD, sleep=4):
+    def BootScreen(self, LCD, sleep=4, version_number="0.0"):
         self.mode = 0
         self.Set_Mode(self.Mode)
         LCD.fill(LCD.red)
         LCD.write_text('Track',30,66,3,LCD.green)
         LCD.write_text('Session',44,96,3,LCD.green)
         LCD.write_text('Timer',65,126,3,LCD.green)
-        LCD.write_text('Caterham Seven',65,197,1,LCD.green)
+        LCD.write_text(('Version:' + version_number),65,197,1,LCD.green)
         LCD.show()
         
     def SetBackColour(self, LCD, backColour):
@@ -520,19 +520,3 @@ def DOF_READ():
         LCD.show()
         if(Touch.Gestures == 0x0C):
             break
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
