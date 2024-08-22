@@ -10,7 +10,7 @@ The following describes general operation of both the ``Track Session`` and ``Re
 * At 85% completion of the ``Track Session`` the timer display colours will change to highlight progression.
 * At 95% completion of the ``Track Session`` the timer display colours will again change, further highlighting progression and final expiry warning.
 * At 100% ``Track Session`` completion the timer display colours will change again.
-* Once the ``Track Session`` has completed, i.e. >100%, the timer it will remain running.  ``Double Tap`` to complete.  A double tap can be used to terminate a running timer at any point.
+* Once the ``Track Session`` has completed, i.e. >100%, the timer it will remain running.  ``Double Tap`` to complete.  A ``Double Tap`` can be used to terminate any running timer.
 * Following termination, a ``Rest in Pits`` splash will display, followed by commencement of the ``Rest in Pits Session`` timer.
 * Once the ``Rest in Pits Session`` is complete, the timer will return to the ``Primary screen``.  The ``Rest in Pits  Session``  can be terminated with a ``Double Tap``.
 
