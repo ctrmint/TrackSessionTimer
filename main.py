@@ -33,7 +33,7 @@ CLINE3 = ["message",  50, 35, 3, "black"]
 
 PLINE1 = [PIT_SESSION_MSG[0], 4, 96, 3, "white"]
 PLINE2 = [PIT_SESSION_MSG[1], 23, 150, 2, "red"]
-
+VERSION = "2.0"
 
 
 def secs_to_mins_secs(seconds):
@@ -41,7 +41,6 @@ def secs_to_mins_secs(seconds):
     minutes = seconds // 60
     remaining_seconds = seconds % 60
     return f"{minutes:02}:{remaining_seconds:02}"
-
 
 
 def set_session(LCD=None, Touch=None, session=None, session_values=None, session_name=None, operation='Config', back_colour='palegreen'):
@@ -84,7 +83,7 @@ def main():
     Touch = Touch_CST816T(mode=1, LCD=LCD)
     
     # Bootscreen
-    Touch.BootScreen(LCD)
+    Touch.BootScreen(LCD, version_number=VERSION)
     time.sleep(BOOT_DELAY_SEC)
 
     while True:
