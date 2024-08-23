@@ -1,10 +1,11 @@
 #LCD_1inch28
+#Version 3.1
 from machine import Pin,I2C,SPI,PWM,Timer,ADC
 import framebuf
 import time
 Vbat_Pin = 29
 
-#Pin definition  引脚定义
+#Pin definition
 I2C_SDA = 6
 I2C_SDL = 7
 I2C_INT = 17
@@ -19,7 +20,7 @@ RST = 13
 
 BL = 25
 
-#LCD Driver  LCD驱
+#LCD Driver  LCD
 class LCD_1inch28(framebuf.FrameBuffer):
     def __init__(self): #SPI initialization  SPI
         self.width = 240
