@@ -5,7 +5,7 @@ The following describes general operation of both the ``Track Session`` and ``Re
 
 * Upon start up a boot splash will be shown for 2 seconds.
 * After which the ``Primary Screen`` will be shown, detailing the current track session duration in minutes, and the statement ``Ready``.  This indicates the timer is ready to start.  To start the ``Track Session`` or race, ``Swipe Down``.
-* After swiping down,``Go`` will display briefly.
+* After swiping down,``Go`` will display briefly.  If Launch Mode has been activited, ``Lights`` will be displayed.  The timer will commence upon sufficient acceleration.
 * Upon starting, the ``Track Session`` timer count down will be displayed, and immediately commence.
 * At 85% completion of the ``Track Session`` the timer display colours will change to highlight progression.
 * At 95% completion of the ``Track Session`` the timer display colours will again change, further highlighting progression and final expiry warning.
