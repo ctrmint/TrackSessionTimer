@@ -1,0 +1,10 @@
+{
+    "DURATION_VALUES": [1, 5, 10, 15, 20, 25, 30, 40, 50, 60],
+    "LAUNCH_SENSE_VALUES": [0, 0.5, 1, 1.25, 1.5, 1.75, 2, 2.5, 3.5, 4],
+    "DISPLAY_DELAY_REST": 5,
+    "DISPLAY_DELAY_REST_COLOUR": "blue",
+    "REST_SESSION_LENGTH": 20,
+    "TRACK_SESSION_LENGTH": 20,
+    "BOOT_DELAY_SEC": 2,
+    "VERSION": "3.1"
+    }
