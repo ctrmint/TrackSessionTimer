@@ -1,5 +1,5 @@
 # Track Session Timer
-## Version 2
+## Version 3.1
 Trackday or race session timer.
 
 ### Improvements
