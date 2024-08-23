@@ -15,7 +15,7 @@ The following describes general operation of both the ``Track Session`` and ``Re
 * Once the ``Rest in Pits Session`` is complete, the timer will return to the ``Primary screen``.  The ``Rest in Pits  Session``  can be terminated with a ``Double Tap``.
 
 ## Configuration / Setup 
-All settings are stored from sessions to session while the timer has power.  Settings are wiped if power is lost.
+All settings are stored from session to session while the timer has power.  Settings are wiped if power is lost.
 
 ### Session Duration
 It is possible to change the duration of both the ``Track Session`` and the ``Rest in Pits``.
@@ -25,4 +25,6 @@ It is possible to change the duration of both the ``Track Session`` and the ``Re
 * When the desired duration value is shown ``Swipe Up`` to save and return to the ``Primary Screen``
 
 ### Launch Mode
-Launch mode is disabled by default
+``Launch mode`` is disabled by default.
+``Launch mode`` can be enabled by defining an accelerometer sensitivy value above zero.
+
