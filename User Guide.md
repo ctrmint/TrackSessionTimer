@@ -26,5 +26,7 @@ It is possible to change the duration of both the ``Track Session`` and the ``Re
 
 ### Launch Mode
 ``Launch mode`` is disabled by default.
-``Launch mode`` can be enabled by defining an accelerometer sensitivy value above zero.
-
+``Launch mode`` can be enabled by defining a ``Launch Sensitivity`` value above zero.
+* From the ``Primary Screen``, ``Swipe Up`` to edit ``Launch Sensitivity``.
+* Swipe ``Left`` or ``Right`` to select an appropriate value greater than zero.
+* Swip ``UP`` to save and enable ``Launch mode``
