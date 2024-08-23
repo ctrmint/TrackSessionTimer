@@ -15,8 +15,14 @@ The following describes general operation of both the ``Track Session`` and ``Re
 * Once the ``Rest in Pits Session`` is complete, the timer will return to the ``Primary screen``.  The ``Rest in Pits  Session``  can be terminated with a ``Double Tap``.
 
 ## Configuration / Setup 
+All settings are stored from sessions to session while the timer has power.  Settings are wiped if power is lost.
+
+### Session Duration
 It is possible to change the duration of both the ``Track Session`` and the ``Rest in Pits``.
 
 * From the ``Primary Screen``, ``Swipe Left`` to edit the ``Track Session`` and ``Swipe Right`` to edit the ``Rest in Pits  Session``.
 * Once in either edit modes, use a ``Swipe Right`` to increment the duration and a ``Swipe Left`` to decrement the value.  Note duration values are predefined as [1, 5, 10, 15, 20, 25, 30, 40, 50, 60] minutes.
 * When the desired duration value is shown ``Swipe Up`` to save and return to the ``Primary Screen``
+
+### Launch Mode
+Launch mode is disabled by default
