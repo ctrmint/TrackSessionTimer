@@ -1,6 +1,6 @@
 # Mark Rodman
 # Session Timer for track days and racing.
-# V2.0
+# V3.1- Accelerometer enable launch, and params.json
 # ----------------------------------------------------
 # Description.
 # This is an aid to monitoring the duration of a given
@@ -13,37 +13,93 @@ from machine import Pin,I2C,SPI,PWM,Timer
 import framebuf
 import time
 import sys
-#from touch_LCD import *   # retired and split dedicated imports
+import json
 from timing import *
 from lcd_1inch28 import *
 from touch_drive import *
+from qmi8658 import *
 
-DURATION_VALUES = [1, 5, 10, 15, 20, 25, 30, 40, 50, 60]
-DISPLAY_DELAY_REST = 5
-DISPLAY_DELAY_REST_COLOUR = 'blue'
-REST_SESSION_LENGTH = 20
-TRACK_SESSION_LENGTH = 20
+PARAMS_FILE = "params.json"
+
 PIT_SESSION_MSG = ['Cool down!', 'Rest in pits']
 TRACK_SESSION_MSG = ['Ready', 'Swipe DOWN to start']
-BOOT_DELAY_SEC = 2
-
 CLINE1 = [TRACK_SESSION_MSG[0], 20, 96, 5, "white" ]
 CLINE2 = [TRACK_SESSION_MSG[1],  44, 195, 1, "black"]
 CLINE3 = ["message",  50, 35, 3, "black"]
-
 PLINE1 = [PIT_SESSION_MSG[0], 4, 96, 3, "white"]
 PLINE2 = [PIT_SESSION_MSG[1], 23, 150, 2, "red"]
-VERSION = "2.0"
 
 
 def secs_to_mins_secs(seconds):
-    # Calculate the number of minutes and the remaining seconds
+    """
+    Converts seconds to minutes and remaining seconds.
+    :param seconds: the number of seconds to convert
+    :return: a formatted string representing the minutes and remaining seconds
+    """
     minutes = seconds // 60
     remaining_seconds = seconds % 60
     return f"{minutes:02}:{remaining_seconds:02}"
 
 
+def set_sensitivity(LCD=None, Touch=None, sensitivity_values=None, sensitivity=0, operation='Config', back_colour='palegreen'):
+    """
+    Function sets the sensitivity level of the accelerometer used to detect launch
+    Operation is completed through the supplied LCD and Touch objects.
+    :param LCD: The LCD object for controlling the display.
+    :param Touch: The Touch object for interacting with the touch screen.
+    :param sensitivity_values: A list of possible sensitivity values for the touch screen.
+    :param sensitivity: The current sensitivity level of the touch screen.
+    :param operation: The current operation being performed.
+    :param back_colour: The background color of the display.
+    :return: The updated sensitivity level of the touch screen.
+    """
+    index = 0
+    exit_cmd = False
+    CL_X = 60
+    CLINE1 = [str(sensitivity_values[index]), CL_X, 80, 5, "white"]
+    CLINE2 = ["Launch", 75, 150, 2, "black"]
+    CLINE2A = ["Sensitivitiy", 20, 180, 2, "black"]
+    CLINE3 = [operation, 75, 35, 2, "black"]
+    c1 = [CLINE1, CLINE2, CLINE3]
+    Touch.ControlScreen(LCD, text_array=c1, back_colour=back_colour)
+    while not exit_cmd:
+        gesture = Touch.GetGesture(LCD)
+        if gesture == 'up':
+            exit_cmd = True
+        if gesture == 'left':
+            if index == 0:
+                index = len(sensitivity_values) - 1
+            else:
+                index -= 1
+        if gesture == 'right':
+            index += 1
+            if index == len(sensitivity_values):
+                index = 0
+        
+        CLINE1 = [str(sensitivity_values[index]), CL_X, 80, 5, "white"]
+        c1 = [CLINE1, CLINE2, CLINE3, CLINE2A]
+        Touch.ControlScreen(LCD, text_array=c1, back_colour=back_colour)
+        sensitivity = sensitivity_values[index]
+    return sensitivity
+
+
 def set_session(LCD=None, Touch=None, session=None, session_values=None, session_name=None, operation='Config', back_colour='palegreen'):
+    """
+    Function sets the session duration for the declared session instance.
+    The function updates the session object with the selected value from the session_values list.
+    It displays the session information on the LCD screen using the Touch.ControlScreen() method.
+    It allows the user to navigate through the session_values list using touch gestures.
+    The user can exit the operation by swiping up, go to the previous value by swiping left, and go to the next 
+    value by swiping right.
+    :param LCD: A reference to the LCD object.
+    :param Touch: A reference to the Touch object.
+    :param session: The session object to be updated.
+    :param session_values: A list of values for the session.
+    :param session_name: The name of the session.
+    :param operation: The operation to be performed.
+    :param back_colour: The background color for the display.
+    :return: None
+    """
     exit_cmd = False
     index = 0
     CLINE1 = [str(session_values[index]), 70, 96, 5, "white"]
@@ -72,9 +128,45 @@ def set_session(LCD=None, Touch=None, session=None, session_values=None, session
     return
 
 
+def accel_launch(qmi8658, sensitivity=0):
+    """
+    Continuously reads the accelerometer values from the qmi8658 sensor until the acceleration values exceed the 
+    specified sensitivity.
+    :param qmi8658: an object representing the qmi8658 sensor
+    :param sensitivity: the minimum acceleration threshold in each axis (default is 0)
+    :return: True if the acceleration values exceed the sensitivity, False otherwise
+    """
+    ac_x = 0
+    ac_y = 0
+    ac_z = 0
+    
+    while ac_x < sensitivity or ac_y < sensitivity or ac_z < sensitivity:
+        xyz=qmi8658.Read_XYZ()
+        ac_x = xyz[0]
+        ac_y = xyz[1]
+        ac_z = xyz[2]
+        #print("sensitivity", sensitivity, "x", ac_x, "y", ac_y, "z", ac_z)
+    return True
+
+
 def main():
     ts_duration = None
     rest_duration = None
+    sensitivity = 0
+    
+    try:
+        with open(PARAMS_FILE, 'r') as file:
+            params_file = json.load(file)
+    except Exception as e:
+        print(e)
+        sys.exit()
+        
+    for key, value in params_file.items():
+        globals()[key] = value
+       
+    # Gyro and Accel
+    qmi8658=QMI8658()
+    Vbat= ADC(Pin(Vbat_Pin))  
     
     # Init screen
     LCD = LCD_1inch28()
@@ -84,7 +176,7 @@ def main():
     
     # Bootscreen
     Touch.BootScreen(LCD, version_number=VERSION)
-    time.sleep(BOOT_DELAY_SEC)
+    time.sleep(BOOT_DELAY_SEC)  
 
     while True:
         launch = False
@@ -108,16 +200,22 @@ def main():
                 if gesture == 'right':      # Pit Session Timer Timer change
                     set_session(LCD=LCD, Touch=Touch, session=rest, session_values=DURATION_VALUES, session_name='Rest', back_colour='paleblue')
                 if gesture == 'up':
-                    print("Timer top other")
+                    sensitivity = set_sensitivity(LCD=LCD, Touch=Touch, sensitivity_values=LAUNCH_SENSE_VALUES, sensitivity=sensitivity, operation='Config', back_colour='palegreen')
                 if gesture == 'down':
                     print("Timer go!")
                     launch = True
             
             time.sleep(0.5)
 
-        # Go Screen 
-        Touch.GoScreen(LCD)
-        
+        # Go Screen
+        if sensitivity > 0:
+            Touch.GoScreen(LCD, text='lights!')
+        else:
+            Touch.GoScreen(LCD)
+
+        # Detect launch, if not required sensitivity should be 0
+        accel_launch(qmi8658, sensitivity=sensitivity)
+
         # Start session, using set duration
         ts.start_session()
         ts_duration = ts.duration_mins
@@ -165,3 +263,4 @@ def main():
 
 if __name__=='__main__':
     main()
+    
