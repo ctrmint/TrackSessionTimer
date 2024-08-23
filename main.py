@@ -1,6 +1,10 @@
 # Mark Rodman
 # Session Timer for track days and racing.
-# V3.1- Accelerometer enable launch, and params.json
+# V3.2-
+# 1) Accelerometer enable launch,
+# 2) User params
+# 3) System params
+# 4) Persistence between reboots
 # ----------------------------------------------------
 # Description.
 # This is an aid to monitoring the duration of a given
@@ -20,6 +24,7 @@ from touch_drive import *
 from qmi8658 import *
 
 PARAMS_FILE = "params.json"
+USER_FILE = "user.json"
 
 PIT_SESSION_MSG = ['Cool down!', 'Rest in pits']
 TRACK_SESSION_MSG = ['Ready', 'Swipe DOWN to start']
@@ -125,7 +130,7 @@ def set_session(LCD=None, Touch=None, session=None, session_values=None, session
         c1 = [CLINE1, CLINE2, CLINE3]
         Touch.ControlScreen(LCD, text_array=c1, back_colour=back_colour)
         session.duration_mins = session_values[index]
-    return
+    return session.duration_mins
 
 
 def accel_launch(qmi8658, sensitivity=0):
@@ -149,21 +154,95 @@ def accel_launch(qmi8658, sensitivity=0):
     return True
 
 
-def main():
-    ts_duration = None
-    rest_duration = None
-    sensitivity = 0
-    
+def file_out(file=None, data=None, mode='w', debug=True):
+    """
+    Write JSON data to a file.
+    :param file: The path to the file where the JSON data will be written. Default is None.
+    :param data: The data to write to the file in JSON format. Default is None.
+    :param mode: The opening mode for the file. Default mode is 'w'.
+    :param debug: If True, prints the error messages. Default is True.
+    :return: True if write was successful, otherwise False.
+    """
+    if file is None:
+        if debug:
+            print("No file specified.")
+        return False
+
+    if data is None:
+        if debug:
+            print("No data provided to write.")
+        return False
+
     try:
-        with open(PARAMS_FILE, 'r') as file:
-            params_file = json.load(file)
+        with open(file, mode) as target_file:
+            json.dump(data, target_file)
+            return True
     except Exception as e:
-        print(e)
+        if debug:
+            print(f"Error occurred: {e}")
+        return False
+
+
+
+def file_in(file=None, mode='r+', debug=True):
+    """
+    Open and read a JSON file.
+    :param file: The path to the JSON file to be read. Default is None.
+    :param mode: The opening mode for the file. Default mode is 'r+'.
+    :return: The JSON data from the file, or None if an error occurs.
+    """
+    if file is None:
+        if debug:
+            print("No file specified.")
+        return None
+
+    try:
+        with open(file, mode) as target_file:
+            return json.load(target_file)
+    except Exception as e:
+        if debug:
+            print(f"Error occurred: {e}")
+        return None
+    
+
+def update_json(json_data=None, key=None, value=None):
+    """
+    Update the given JSON data with a new key-value pair or update an existing key-value pair.
+    :param json_data: The JSON data to be updated. (type: dict)
+    :param key: The key of the key-value pair to be updated. (type: str)
+    :param value: The value to be associated with the key. (type: Any)
+    :return: The updated JSON data if successful, None otherwise. (type: dict or None)
+    """
+    if json_data and key and value:
+        # Update the key-value pair
+        if key in json_data:
+            json_data.update({key:value})
+        else:
+            json_data[key] = value
+    else:
+        return None
+    return json_data
+
+
+def main():   
+    system_params = file_in(file=PARAMS_FILE)     # load system params file
+    user_params = file_in(file=USER_FILE)         # load user params file
+    if system_params:
+        for key, value in system_params.items():  # declare globals from
+            globals()[key] = value                #        from the file
+    else:
         sys.exit()
-        
-    for key, value in params_file.items():
-        globals()[key] = value
-       
+
+    if user_params:
+        for key, value in user_params.items():    # declare globals from
+            globals()[key] = value                #        from the file
+    else:
+        # load some defaults!
+        user_params = {"SENSITIVITY": 0, "TRACK_LENGTH": 20, "REST_LENGTH": 20 }
+        print("Default User Params loaded")
+
+
+    print("User Parameters: " + str(user_params))
     # Gyro and Accel
     qmi8658=QMI8658()
     Vbat= ADC(Pin(Vbat_Pin))  
@@ -179,12 +258,23 @@ def main():
     time.sleep(BOOT_DELAY_SEC)  
 
     while True:
+        
+        # Load accelerometer sensitivity
+        if "SENSITIVITY" in user_params: sensitivity = user_params["SENSITIVITY"]
+        else: sensitivity = 0 # fall back value
+        
+        if "RACE_LENGTH" in user_params: race_length = user_params["RACE_LENGTH"]
+        else: race_length = 20 # fall back value
+        
+        if "REST_LENGTH" in user_params: rest_length = user_params["REST_LENGTH"]
+        else: rest_length = 20 # fall back value
+          
         launch = False
         return_type = "up"
         
         # Setup the session timers. 
-        ts = SessionTracker(duration_mins=ts_duration, stype="track")  # on track session timer
-        rest = SessionTracker(duration_mins=rest_duration, stype="rest", debug=True)  # rest session timer
+        ts = SessionTracker(duration_mins=race_length, stype="track")  # on track session timer
+        rest = SessionTracker(duration_mins=rest_length, stype="rest", debug=True)  # rest session timer
 
         while not launch:
             gesture = None
@@ -196,11 +286,23 @@ def main():
             
             if gesture: 
                 if gesture == 'left':       # Race/Track Session Timer change
-                    set_session(LCD=LCD, Touch=Touch, session=ts, session_values=DURATION_VALUES, session_name='Track', back_colour='palegreen')
+                    race_length = set_session(LCD=LCD, Touch=Touch, session=ts, session_values=DURATION_VALUES, session_name='Track', back_colour='palegreen')
+                    # Update track_length within JSON
+                    user_params = update_json(json_data=user_params, key="RACE_LENGTH", value=race_length)
+                    # Write out JSON to file, for next boot
+                    write_response = file_out(file=USER_FILE, data=user_params)
                 if gesture == 'right':      # Pit Session Timer Timer change
-                    set_session(LCD=LCD, Touch=Touch, session=rest, session_values=DURATION_VALUES, session_name='Rest', back_colour='paleblue')
+                    rest_length = set_session(LCD=LCD, Touch=Touch, session=rest, session_values=DURATION_VALUES, session_name='Rest', back_colour='paleblue')
+                    # Update rest_length within JSON
+                    user_params = update_json(json_data=user_params, key="REST_LENGTH", value=rest_length)
+                    # Write out JSON to file, for next boot
+                    write_response = file_out(file=USER_FILE, data=user_params)
                 if gesture == 'up':
                     sensitivity = set_sensitivity(LCD=LCD, Touch=Touch, sensitivity_values=LAUNCH_SENSE_VALUES, sensitivity=sensitivity, operation='Config', back_colour='palegreen')
+                    # Update sensitivity within JSON
+                    user_params = update_json(json_data=user_params, key="SENSITIVITY", value=sensitivity)
+                    # Write out JSON to file, for next boot
+                    write_response = file_out(file=USER_FILE, data=user_params)
                 if gesture == 'down':
                     print("Timer go!")
                     launch = True
