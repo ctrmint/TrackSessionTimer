@@ -1,9 +1,12 @@
-# Track Session Timer - v3.1
+# Track Session Timer - v3.2
 Trackday or race session timer.
 
 # Change log
 ## Version 3.0
-### v3.1 [current]
+### v3.2 [current]
+* User settings stored between reboots, [track session length, rest session length, launch mode]
+* Introduction of system params and user params files.
+### v3.1 
 * Accelerometer based timer activation or launch mode
 * Configurable sensitiviy for accelerometer
 * Code refactoring improvements, including dedicated include for accelerometer
