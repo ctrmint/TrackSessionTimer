@@ -1,5 +1,4 @@
-# Track Session Timer
-## Version 3.1
+# Track Session Timer - v3.1
 Trackday or race session timer.
 
 # Change log
