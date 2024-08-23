@@ -2,7 +2,7 @@
 Trackday or race session timer.
 
 # Change log
-## Verson 3.0
+## Version 3.0
 ### v3.1 [current]
 * Accelerometer based timer activation or launch mode
 * Configurable sensitiviy for accelerometer
