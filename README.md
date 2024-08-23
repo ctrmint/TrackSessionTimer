@@ -8,7 +8,7 @@ Trackday or race session timer.
 * Introduction of system params and user params files.
 ### v3.1 
 * Accelerometer based timer activation or launch mode
-* Configurable sensitiviy for accelerometer
+* Configurable sensitivity for accelerometer
 * Code refactoring improvements, including dedicated include for accelerometer
 ### v3.0 
 * No Release
