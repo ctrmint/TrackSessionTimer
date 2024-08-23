@@ -2,7 +2,12 @@
 ## Version 3.1
 Trackday or race session timer.
 
-### Improvements
+### Change log
+## 
+## Verson 3.0
+### v3.0 
+* No Release
+## Version 2.0
 * Faster UI and more responsive touch screen.
 * Greater control over session settings, includes ability to define track session length and rest session length.
 * Improved UI colours for 85% and 95% session expiry.
