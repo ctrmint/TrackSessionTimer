@@ -2,7 +2,7 @@
 ## Version 3.1
 Trackday or race session timer.
 
-### Change log
+# Change log
 ## Verson 3.0
 ### v3.1 [current]
 * Accelerometer based timer activation or launch mode
