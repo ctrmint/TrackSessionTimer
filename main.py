@@ -1,6 +1,6 @@
 # Mark Rodman
 # Session Timer for track days and racing.
-# V3.2
+# V3.3
 
 import time
 
@@ -18,11 +18,11 @@ USER_FILE = "user.json"
 
 PIT_SESSION_MSG = ["Cool down!", "Rest in pits"]
 TRACK_SESSION_MSG = ["Ready", "Swipe DOWN to start"]
-CLINE1 = [TRACK_SESSION_MSG[0], 20, 96, 5, "white"]
-CLINE2 = [TRACK_SESSION_MSG[1], 44, 195, 1, "black"]
-CLINE3 = ["message", 50, 35, 3, "black"]
-PLINE1 = [PIT_SESSION_MSG[0], 4, 96, 3, "white"]
-PLINE2 = [PIT_SESSION_MSG[1], 23, 150, 2, "red"]
+CLINE1 = [TRACK_SESSION_MSG[0], None, 90, 5, "white"]
+CLINE2 = [TRACK_SESSION_MSG[1], None, 185, 1, "black"]
+CLINE3 = ["message", None, 35, 3, "black"]
+PLINE1 = [PIT_SESSION_MSG[0], None, 88, 3, "white"]
+PLINE2 = [PIT_SESSION_MSG[1], None, 145, 2, "red"]
 
 
 def main():

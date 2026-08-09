@@ -1,5 +1,5 @@
 #LCD_1inch28
-#Version 3.1
+#Version 3.3
 from machine import Pin,I2C,SPI,PWM,Timer,ADC
 import framebuf
 import time
@@ -35,6 +35,15 @@ class LCD_1inch28(framebuf.FrameBuffer):
         self.dc(1)
         self.buffer = bytearray(self.height * self.width * 2)
         super().__init__(self.buffer, self.width, self.height, framebuf.RGB565)
+
+        # Allocate the display's single largest contiguous block before loading
+        # font data. Importing generated glyphs first fragments the RP2040 heap
+        # enough to make the 115,200-byte framebuffer allocation unreliable.
+        from font_renderer import draw_centered, draw_text, measure_text
+        self._draw_centered = draw_centered
+        self._draw_text = draw_text
+        self._measure_text = measure_text
+
         self.init_display()
         
         #Define color, Micropython fixed to BRG format
@@ -378,30 +387,14 @@ class LCD_1inch28(framebuf.FrameBuffer):
             self.spi.write(self.buffer[Addr : Addr+((Xend-Xstart)*2)])
         self.cs(1)
         
-    #Write characters, size is the font size, the minimum is 1  
-    def write_text(self,text,x,y,size,color):
-        ''' Method to write Text on OLED/LCD Displays
-            with a variable font size
+    def text_width(self, text, size):
+        """Return the proportional width of text at a UI font size."""
+        return self._measure_text(text, size)
 
-            Args:
-                text: the string of chars to be displayed
-                x: x co-ordinate of starting position
-                y: y co-ordinate of starting position
-                size: font size of text
-                color: color of text to be displayed
-        '''
-        background = self.pixel(x,y)
-        info = []
-        # Creating reference charaters to read their values
-        self.text(text,x,y,color)
-        for i in range(x,x+(8*len(text))):
-            for j in range(y,y+8):
-                # Fetching amd saving details of pixels, such as
-                # x co-ordinate, y co-ordinate, and color of the pixel
-                px_color = self.pixel(i,j)
-                info.append((i,j,px_color)) if px_color == color else None
-        # Clearing the reference characters from the screen
-        self.text(text,x,y,background)
-        # Writing the custom-sized font characters on screen
-        for px_info in info:
-            self.fill_rect(size*px_info[0] - (size-1)*x , size*px_info[1] - (size-1)*y, size, size, px_info[2]) 
+    def write_text(self, text, x, y, size, color):
+        """Draw smooth proportional text and return its rendered width."""
+        return self._draw_text(self, text, x, y, size, color)
+
+    def write_centered(self, text, y, size, color):
+        """Draw smooth proportional text centered on the display."""
+        return self._draw_centered(self, text, y, size, color)

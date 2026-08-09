@@ -1,9 +1,13 @@
-# Track Session Timer - v3.2
+# Track Session Timer - v3.3
 Trackday or race session timer.
 
 # Change log
 ## Version 3.0
-### v3.2 [current]
+### v3.3 [current]
+* Smooth proportional font rendering at native display resolution.
+* Centered typography and improved layout across timer, configuration, and diagnostic screens.
+* Hardware-verified framebuffer rendering, touchscreen startup, and QMI8658 initialization on the supported Waveshare board.
+### v3.2
 * User settings stored between reboots, [track session length, rest session length, launch mode]
 * Introduction of system params and user params files.
 ### v3.1 
@@ -31,35 +35,90 @@ The timer is designed to support common session lengths, making it quick and eas
 
 The timer utilizes the Waveshare 1.28-inch round touch display, allowing for configuration and operation through intuitive swipe gestures.
 
-## Hardware Requirements 
-* Raspberry Pico
-* Waveshare 1.28-inch round touch display (https://www.waveshare.com/1.28inch-touch-lcd.htm)
+## Display font
 
-Following setup instructions for the display, connecting it to the required pins on the pico, these should be as follows although may vary depending on implementation.
+The firmware includes a compact proportional bitmap font rendered directly at the display's native resolution. It replaces enlargement of MicroPython's 8x8 framebuffer font, so large countdown digits and labels retain smooth shapes instead of scaling into square pixels.
 
-### Hardware Connections
-* VCC    	->    	3.3V
-* GND    	->    	GND
-* MISO    ->    	12
-* MOSI    ->    	11
-* SCLK    ->    	10
-* LCD_CS  ->    	9
-* LCD_DC  ->    	14
-* LCD_RST ->    	8
-* LCD_BL  ->    	15
-* TP_SDA  ->      6
-* TP_SCL  ->      7
-* TP_INT  ->      16
-* TP_RST  ->      17
+`font_data.py` and its flash-backed `font_data*.bin` glyph assets are generated from Montserrat SemiBold. The assets contain pre-rasterized native UI sizes, allowing the Pico to use its fast framebuffer blitter without holding the complete font in RAM. To regenerate them, install Pillow and run:
 
-## Setup
-The instructions enable the software on the required hardware.   These instructions do not cover the physical installation or support for the hardware. 
-### Pico
-* Ensure you rcomputer has the Python (.py) files and also the latest uf2 file (soure from Raspberry foundation)
-* Press and hold the BOOTSEL button 
-* Connect the Pico to your computer via the appropriate USB cable, after connecting release the BOOTSEL button, the PICO should be mounted to your filesystem.
-* Copy the .py files
-* Copy the uf2 file, the Pico should restart, and the timer automatically starts.
+```sh
+python tools/generate_font.py /path/to/Montserrat-SemiBold.otf font_data.py
+```
+
+The generated font data is distributed under the SIL Open Font License 1.1 in `FONT_LICENSE.txt`.
+
+## Supported hardware
+
+Version 3.3 supports the integrated [Waveshare RP2040-Touch-LCD-1.28](https://www.waveshare.com/product/rp2040-touch-lcd-1.28.htm). This board combines the RP2040, GC9A01A 240x240 LCD, CST816S touchscreen, and QMI8658 IMU used by the firmware. The standalone 1.28-inch Touch LCD connected to a separate Raspberry Pi Pico uses a different pin map and is not currently supported.
+
+### Onboard pin map
+
+These are fixed internal board connections; no external display wiring is required.
+
+| Function | RP2040 pin |
+| --- | ---: |
+| LCD SPI SCLK | GP10 |
+| LCD SPI MOSI | GP11 |
+| LCD CS | GP9 |
+| LCD DC | GP8 |
+| LCD reset | GP13 |
+| LCD backlight | GP25 |
+| Touch/IMU I2C SDA | GP6 |
+| Touch/IMU I2C SCL | GP7 |
+| Touch interrupt | GP21 |
+| Touch reset | GP22 |
+| Battery ADC | GP29 |
+
+## Installation
+
+The application runs on MicroPython. BOOT mode is used only to flash the MicroPython UF2; application files are transferred afterward through the MicroPython serial connection.
+
+### 1. Flash MicroPython
+
+1. Download a stable RP2040 UF2 from the [MicroPython Raspberry Pi Pico download page](https://micropython.org/download/RPI_PICO/) or the [Waveshare board wiki](https://www.waveshare.com/wiki/RP2040-Touch-LCD-1.28).
+2. Connect the board with a USB data cable.
+3. Hold **BOOT**, press and release **RESET**, then release **BOOT**. The `RPI-RP2` storage volume should appear.
+4. Copy only the MicroPython `.uf2` file to `RPI-RP2`. The board restarts and exposes a serial device such as `/dev/ttyACM0` or a COM port.
+
+### 2. Install the transfer tool
+
+From a terminal on the computer:
+
+```sh
+python -m pip install mpremote
+mpremote connect auto exec "import os; print(os.uname())"
+```
+
+The second command should identify an RP2040 MicroPython board.
+
+### 3. Upload the application
+
+Run these commands from the repository root. Supporting files and font assets are copied first; `main.py` is installed last as the automatic entry point.
+
+```sh
+mpremote connect auto fs cp configuration.py font_data.py font_renderer.py launch.py lcd_1inch28.py params.json qmi8658.py settings.py timing.py touch_drive.py font_data*.bin :
+mpremote connect auto fs cp main.py :
+mpremote connect auto reset
+```
+
+On a fresh installation, the firmware creates `user.json` with safe defaults. To start with the example preferences in this repository, copy it before `main.py`:
+
+```sh
+mpremote connect auto fs cp user.json :
+```
+
+When upgrading an existing device, omit that command so its saved track duration, rest duration, and launch sensitivity are preserved.
+
+### 4. Verify first boot
+
+The display should show the v3.3 splash and then the green **Ready** screen. The serial console should report the loaded user parameters, `Success:Detected CST816T.`, and the touchscreen revision without a traceback.
+
+If first boot fails:
+
+* `OSError: Font bitmap is missing or truncated` means one or more `font_data*.bin` files were not copied.
+* An import error generally means a `.py` support module was omitted; repeat the upload command and keep `main.py` last.
+* No serial device after flashing usually indicates a charge-only USB cable, an incorrect UF2, or a board still in BOOT mode.
+* A missing touchscreen or IMU error indicates unsupported hardware or a board-level connection problem.
 
 ## Configuration files
 
@@ -78,5 +137,4 @@ Run the hardware-independent regression suite with:
 python -m unittest discover -s tests -v
 ```
 
-The suite uses fakes for time, touch gestures, display calls, filesystem operations, and accelerometer samples. It does not validate physical SPI/I2C wiring, LCD rendering, touchscreen recognition, QMI8658 readings, or real-world launch thresholds; those behaviors still require the selected target hardware.
-
+The suite uses fakes for time, touch gestures, display calls, filesystem operations, and accelerometer samples. Version 3.3 was additionally validated on the supported Waveshare board for boot, LCD/font rendering, CST816S touchscreen detection, QMI8658 initialization, saved settings, and launch behavior.

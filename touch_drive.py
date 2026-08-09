@@ -1,5 +1,5 @@
 # Touch drive
-# v3.1
+# v3.3
 from machine import Pin,I2C,SPI,PWM,Timer,ADC
 import framebuf
 import time
@@ -110,10 +110,10 @@ class Touch_CST816T(object):
         self.mode = 0
         self.Set_Mode(self.Mode)
         LCD.fill(LCD.red)
-        LCD.write_text('Track',30,66,3,LCD.green)
-        LCD.write_text('Session',44,96,3,LCD.green)
-        LCD.write_text('Timer',65,126,3,LCD.green)
-        LCD.write_text(('Version:' + version_number),65,197,1,LCD.green)
+        LCD.write_centered('Track',55,3,LCD.green)
+        LCD.write_centered('Session',90,3,LCD.green)
+        LCD.write_centered('Timer',125,3,LCD.green)
+        LCD.write_centered(('Version ' + version_number),195,1,LCD.green)
         LCD.show()
         
     def SetBackColour(self, LCD, backColour):
@@ -176,8 +176,11 @@ class Touch_CST816T(object):
                 if len(text) != 5:
                     raise ValueError(f"Each text array must contain exactly 5 elements: {text}")
                 string_val, x, y, size, color = text
-                # Validate each parameter (e.g., ensure x, y are within screen bounds)
-                LCD.write_text(string_val, x, y, size, self.SetTextColour(LCD, color))
+                text_color = self.SetTextColour(LCD, color)
+                if x is None:
+                    LCD.write_centered(string_val, y, size, text_color)
+                else:
+                    LCD.write_text(string_val, x, y, size, text_color)
         # Refresh the LCD to display the changes
         LCD.show()
         
@@ -186,7 +189,7 @@ class Touch_CST816T(object):
         #self.mode = 0
         #self.Set_Mode(self.Mode)
         LCD.fill(LCD.green)
-        LCD.write_text(text,12,96,4,LCD.white)
+        LCD.write_centered(text,92,4,LCD.white)
         LCD.show()
         time.sleep(1)
 
@@ -205,8 +208,8 @@ class Touch_CST816T(object):
         self.mode = 0
         self.Set_Mode(self.Mode)
         LCD.fill(backColour)
-        LCD.write_text(remaining,1,96,textsize_rem,textColour)
-        LCD.write_text(elapsed,62,185,3,textColour)
+        LCD.write_centered(remaining,82,textsize_rem,textColour)
+        LCD.write_centered(elapsed,180,3,textColour)
         LCD.show()
     
     
@@ -289,8 +292,8 @@ class Touch_CST816T(object):
                 # Plot the revised duration on the screen
                 LCD.fill(LCD.green)
                 dur_str = f"{duration:02}"
-                LCD.write_text(str(dur_str),55,90,8,LCD.white)
-                LCD.write_text('minutes',67,190,2,LCD.black)
+                LCD.write_centered(str(dur_str),75,8,LCD.white)
+                LCD.write_centered('minutes',185,2,LCD.black)
                 LCD.show()
                 
                 # Delay to stop interface bounce, and flying through all of the array values.
@@ -373,44 +376,44 @@ def Touch_Gesture():
     Touch.Set_Mode(Touch.Mode)
     LCD.fill(LCD.white)
 #     LCD.show()
-    LCD.write_text('Gesture test',70,90,1,LCD.black)
-    LCD.write_text('Complete as prompted',35,120,1,LCD.black)
+    LCD.write_centered('Gesture test',90,1,LCD.black)
+    LCD.write_centered('Complete as prompted',120,1,LCD.black)
     LCD.show()
     time.sleep(1)
     LCD.fill(LCD.white)
     while Touch.Gestures != 0x01:
         LCD.fill(LCD.white)
-        LCD.write_text('UP',100,110,3,LCD.black)
+        LCD.write_centered('UP',105,3,LCD.black)
         LCD.show()
         time.sleep(0.1)
         
     while Touch.Gestures != 0x02:
         LCD.fill(LCD.white)
-        LCD.write_text('DOWM',70,110,3,LCD.black)
+        LCD.write_centered('DOWN',105,3,LCD.black)
         LCD.show()
         time.sleep(0.1)
         
     while Touch.Gestures != 0x03:
         LCD.fill(LCD.white)
-        LCD.write_text('LEFT',70,110,3,LCD.black)
+        LCD.write_centered('LEFT',105,3,LCD.black)
         LCD.show()
         time.sleep(0.1)
         
     while Touch.Gestures != 0x04:
         LCD.fill(LCD.white)
-        LCD.write_text('RIGHT',60,110,3,LCD.black)
+        LCD.write_centered('RIGHT',105,3,LCD.black)
         LCD.show()
         time.sleep(0.1)
         
     while Touch.Gestures != 0x0C:
         LCD.fill(LCD.white)
-        LCD.write_text('Long Press',40,110,2,LCD.black)
+        LCD.write_centered('Long Press',105,2,LCD.black)
         LCD.show()
         time.sleep(0.1)
         
     while Touch.Gestures != 0x0B:
         LCD.fill(LCD.white)
-        LCD.write_text('Double Click',25,110,2,LCD.black)
+        LCD.write_centered('Double Click',105,2,LCD.black)
         LCD.show() 
         time.sleep(0.1)
 
@@ -427,27 +430,25 @@ def DOF_READ():
         LCD.fill(LCD.white)
         
         LCD.fill_rect(0,0,240,40,LCD.red)
-        LCD.text("Waveshare",80,25,LCD.white)
+        LCD.write_centered("Waveshare",18,1,LCD.white)
         
         LCD.fill_rect(0,40,240,40,LCD.blue)
-        # LCD.text("Long Press to Quit",20,57,LCD.white)
-        LCD.write_text("Long Press to Quit",50,57,1,LCD.white)
+        LCD.write_centered("Long Press to Quit",54,1,LCD.white)
         
         LCD.fill_rect(0,80,120,120,0x1805)
-        LCD.text("ACC_X={:+.2f}".format(xyz[0]),20,100-3,LCD.white)
-        LCD.text("ACC_Y={:+.2f}".format(xyz[1]),20,140-3,LCD.white)
-        LCD.text("ACC_Z={:+.2f}".format(xyz[2]),20,180-3,LCD.white)
+        LCD.write_text("ACC_X={:+.2f}".format(xyz[0]),5,94,1,LCD.white)
+        LCD.write_text("ACC_Y={:+.2f}".format(xyz[1]),5,134,1,LCD.white)
+        LCD.write_text("ACC_Z={:+.2f}".format(xyz[2]),5,174,1,LCD.white)
 
         LCD.fill_rect(120,80,120,120,0xF073)
-        LCD.text("GYR_X={:+3.2f}".format(xyz[3]),125,100-3,LCD.white)
-        LCD.text("GYR_Y={:+3.2f}".format(xyz[4]),125,140-3,LCD.white)
-        LCD.text("GYR_Z={:+3.2f}".format(xyz[5]),125,180-3,LCD.white)
+        LCD.write_text("GYR_X={:+3.2f}".format(xyz[3]),125,94,1,LCD.white)
+        LCD.write_text("GYR_Y={:+3.2f}".format(xyz[4]),125,134,1,LCD.white)
+        LCD.write_text("GYR_Z={:+3.2f}".format(xyz[5]),125,174,1,LCD.white)
         
         LCD.fill_rect(0,200,240,40,0x180f)
         reading = Vbat.read_u16()*3.3/65535 * 3
-        LCD.text("Vbat={:.2f}".format(reading),80,215,LCD.white)
+        LCD.write_centered("Vbat={:.2f}".format(reading),212,1,LCD.white)
         
         LCD.show()
         if(Touch.Gestures == 0x0C):
             break
-
