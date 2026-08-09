@@ -139,6 +139,8 @@ Version 3.2 uses two separate configuration scopes:
 * `params.json` contains system-owned choices and display behavior: `DURATION_VALUES`, `LAUNCH_SENSE_VALUES`, `VERSION`, `DISPLAY_DELAY_REST`, `DISPLAY_DELAY_REST_COLOUR`, and `BOOT_DELAY_SEC`.
 * `user.json` contains the current user selections: `RACE_LENGTH` (track-session minutes), `REST_LENGTH` (pit-rest minutes), and `SENSITIVITY` (launch threshold; `0` disables Launch Mode).
 
+Launch sensitivity is the filtered change in acceleration-vector magnitude from a 0.4-second stationary baseline, measured in g. This removes gravity and mounting orientation and handles acceleration on either side of every axis. Lower non-zero values are more sensitive. Detection requires three consecutive samples above the threshold; double-tap cancels the wait, and a 30-second timeout returns to the Ready screen. See `User Guide.md` for the practical meaning of every configured value.
+
 The firmware has built-in system and user defaults. Missing, malformed, or unsupported user values are replaced with safe defaults and saved using the canonical keys above. Existing `TRACK_LENGTH`, `TRACK_SESSION_LENGTH`, and `REST_SESSION_LENGTH` user keys are migrated automatically.
 
 ## Host-side tests
