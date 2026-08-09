@@ -22,6 +22,7 @@ class Touch_CST816T(object):
         self.int=Pin(int_pin,Pin.IN, Pin.PULL_UP)     
         self.tim = Timer()     
         self.rst=Pin(rst_pin,Pin.OUT)
+        self._configured_mode = None
         self.Reset()
         bRet=self.WhoAmI()
         if bRet :
@@ -67,12 +68,17 @@ class Touch_CST816T(object):
         time.sleep_ms(1)
         self.rst(1)
         time.sleep_ms(50)
+        self._configured_mode = None
     
     #Set mode 
     def Set_Mode(self,mode,callback_time=10,rest_time=5): 
         # mode = 0 gestures mode 
         # mode = 1 point mode 
         # mode = 2 mixed mode 
+        self.Mode = mode
+        if self._configured_mode == mode:
+            return False
+
         if (mode == 1):      
             self._write_byte(0xFA,0X41)
             
@@ -82,6 +88,8 @@ class Touch_CST816T(object):
         else:
             self._write_byte(0xFA,0X11)
             self._write_byte(0xEC,0X01)
+        self._configured_mode = mode
+        return True
      
     #Get the coordinates of the touch
     def get_point(self):
@@ -107,7 +115,6 @@ class Touch_CST816T(object):
             self.l = 50
 
     def BootScreen(self, LCD, sleep=4, version_number="0.0"):
-        self.mode = 0
         self.Set_Mode(self.Mode)
 
         splash_loaded = False
@@ -221,8 +228,7 @@ class Touch_CST816T(object):
             backColour = LCD.green
         if textsize_rem is None:
             textsize_rem = 5
-        self.mode = 0
-        self.Set_Mode(self.Mode)
+        self.Set_Mode(0)
         LCD.fill(backColour)
         LCD.write_centered(remaining,82,textsize_rem,textColour)
         LCD.write_centered(elapsed,180,3,textColour)
@@ -252,8 +258,7 @@ class Touch_CST816T(object):
     #Gesture
     def GetGesture(self, LCD, debounce_time=0.2):
         return_type = None     
-        self.Mode = 0
-        self.Set_Mode(self.Mode)
+        self.Set_Mode(0)
          
         if self.Gestures == G_UP:
             return_type = "up"

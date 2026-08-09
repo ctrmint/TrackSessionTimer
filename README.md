@@ -47,6 +47,12 @@ python tools/generate_font.py /path/to/Montserrat-SemiBold.otf font_data.py
 
 The generated font data is distributed under the SIL Open Font License 1.1 in `FONT_LICENSE.txt`.
 
+## Live display refresh
+
+Track and rest sessions poll stop gestures every 50 ms while comparing the complete visible frame (remaining time, elapsed time, font size, background, and text colour) with the previous frame. The 115,200-byte framebuffer is transferred only when a displayed second or warning state changes, normally reducing continuous redraws to one per second. Touch-controller mode changes are also cached, so an unchanged gesture mode does not generate repeated I2C writes.
+
+On the supported Waveshare board running MicroPython 1.21.0, five full live-screen redraws measured 56.2–65.4 ms. Input is therefore checked within 50 ms between redraws and within approximately 115 ms in the worst case when a gesture arrives immediately before a redraw. Five consecutive frames produced only the two register writes needed for the initial gesture-mode configuration and no rewrites on later frames.
+
 ## Startup splash
 
 At startup, the timer displays the supplied Caterham artwork on a black background sized for the 240x240 round display. The image is stored as a native `startup_splash.rgb565` framebuffer and loaded directly into the LCD's existing buffer, avoiding a second full-screen allocation on the RP2040. If the asset is absent or has the wrong size, the original text splash is shown instead.
@@ -107,7 +113,7 @@ The second command should identify an RP2040 MicroPython board.
 Run these commands from the repository root. Supporting files and font assets are copied first; `main.py` is installed last as the automatic entry point.
 
 ```sh
-mpremote connect auto fs cp configuration.py font_data.py font_renderer.py launch.py lcd_1inch28.py params.json qmi8658.py settings.py splash.py timing.py touch_drive.py font_data*.bin startup_splash.rgb565 :
+mpremote connect auto fs cp configuration.py font_data.py font_renderer.py launch.py lcd_1inch28.py live_display.py params.json qmi8658.py settings.py splash.py timing.py touch_drive.py font_data*.bin startup_splash.rgb565 :
 mpremote connect auto fs cp main.py :
 mpremote connect auto reset
 ```

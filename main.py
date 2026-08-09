@@ -7,9 +7,15 @@ import time
 from configuration import set_sensitivity, set_session
 from launch import accel_launch
 from lcd_1inch28 import LCD_1inch28
+from live_display import (
+    draw_live_frame,
+    rest_live_frame,
+    run_live_display,
+    track_live_frame,
+)
 from qmi8658 import QMI8658
 from settings import load_configuration, persist_setting
-from timing import SessionTracker, secs_to_mins_secs
+from timing import SessionTracker
 from touch_drive import Touch_CST816T
 
 
@@ -117,35 +123,12 @@ def main():
 
         track_session.start_session()
 
-        while track_session.live is True:
-            now = time.time()
-            remaining = secs_to_mins_secs(track_session.end_time - now)
-            elapsed = secs_to_mins_secs(now - track_session.start_time)
-
-            if touch.StopGesture(lcd):
-                track_session.live = False
-
-            if now < track_session.end_time:
-                if now < track_session.last_15:
-                    touch.LiveScreen(
-                        lcd, textsize_rem=6, backColour=None, textColour=None,
-                        elapsed=elapsed, remaining=remaining,
-                    )
-                elif now < track_session.last_5:
-                    touch.LiveScreen(
-                        lcd, textsize_rem=6, backColour=lcd.salmon, textColour=lcd.black,
-                        elapsed=elapsed, remaining=remaining,
-                    )
-                else:
-                    touch.LiveScreen(
-                        lcd, textsize_rem=6, backColour=lcd.lilac, textColour=None,
-                        elapsed=elapsed, remaining=remaining,
-                    )
-            else:
-                touch.LiveScreen(
-                    lcd, textsize_rem=6, backColour=lcd.red, textColour=lcd.black,
-                    elapsed=elapsed, remaining="00:00",
-                )
+        run_live_display(
+            track_session,
+            frame_builder=lambda now: track_live_frame(track_session, now, lcd),
+            draw_frame=lambda frame: draw_live_frame(touch, lcd, frame),
+            stop_check=lambda: touch.StopGesture(lcd),
+        )
 
         touch.ControlScreen(
             lcd,
@@ -155,20 +138,12 @@ def main():
         time.sleep(display_delay_rest)
 
         rest_session.start_session(debug=True)
-        while rest_session.live is True:
-            now = time.time()
-            remaining = secs_to_mins_secs(rest_session.end_time - now)
-            elapsed = secs_to_mins_secs(now - rest_session.start_time)
-
-            if touch.ClearGesture(lcd):
-                rest_session.live = False
-            if now < rest_session.end_time:
-                touch.LiveScreen(
-                    lcd, textsize_rem=6, backColour=lcd.blue, textColour=None,
-                    elapsed=elapsed, remaining=remaining,
-                )
-            else:
-                rest_session.live = False
+        run_live_display(
+            rest_session,
+            frame_builder=lambda now: rest_live_frame(rest_session, now, lcd),
+            draw_frame=lambda frame: draw_live_frame(touch, lcd, frame),
+            stop_check=lambda: touch.ClearGesture(lcd),
+        )
 
 
 if __name__ == "__main__":
