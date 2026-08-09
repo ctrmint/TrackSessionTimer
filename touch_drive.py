@@ -1,9 +1,9 @@
 # Touch drive
 # v3.3
-from machine import Pin,I2C,SPI,PWM,Timer,ADC
-import framebuf
+from machine import I2C, Pin, Timer
 import time
-Vbat_Pin = 29
+
+from hardware import PeripheralIOError, PeripheralIdentityError
 
 #Guesture Hex values
 G_UP = 0x01
@@ -14,41 +14,98 @@ G_LONG_PRESS = 0x0C
 G_DOUBLE_CLIC = 0x0B
 
 
+def _sleep_ms(clock, milliseconds):
+    sleep_ms = getattr(clock, "sleep_ms", None)
+    if sleep_ms is not None:
+        sleep_ms(milliseconds)
+    else:
+        clock.sleep(milliseconds / 1000)
+
+
 class Touch_CST816T(object):
     #Initialize the touch chip
-    def __init__(self,address=0x15,mode=0,i2c_num=1,i2c_sda=6,i2c_scl=7,int_pin=21,rst_pin=22,LCD=None):
-        self._bus = I2C(id=i2c_num,scl=Pin(i2c_scl),sda=Pin(i2c_sda),freq=400_000) #Initialize I2C 
+    def __init__(
+        self,
+        address=0x15,
+        mode=0,
+        i2c_num=1,
+        i2c_sda=6,
+        i2c_scl=7,
+        int_pin=21,
+        rst_pin=22,
+        LCD=None,
+        bus=None,
+        pin_factory=Pin,
+        timer_factory=Timer,
+        clock=time,
+    ):
         self._address = address #Set slave address 
-        self.int=Pin(int_pin,Pin.IN, Pin.PULL_UP)     
-        self.tim = Timer()     
-        self.rst=Pin(rst_pin,Pin.OUT)
+        self._clock = clock
         self._configured_mode = None
-        self.Reset()
-        bRet=self.WhoAmI()
-        if bRet :
-            print("Success:Detected CST816T.")
-            Rev= self.Read_Revision()
-            print("CST816T Revision = {}".format(Rev))
+        try:
+            self._bus = bus
+            if self._bus is None:
+                self._bus = I2C(
+                    id=i2c_num,
+                    scl=pin_factory(i2c_scl),
+                    sda=pin_factory(i2c_sda),
+                    freq=400_000,
+                )
+            self.int=pin_factory(int_pin,pin_factory.IN, pin_factory.PULL_UP)
+            self.tim = timer_factory()
+            self.rst=pin_factory(rst_pin,pin_factory.OUT)
+            self.Reset()
+            chip_id = self._read_byte(0xA7)
+        except PeripheralIOError as error:
+            raise PeripheralIOError("CST816T", "chip ID read", error.detail)
+        except OSError as error:
+            raise PeripheralIOError("CST816T", "chip ID read", error)
+
+        if chip_id != 0xB5:
+            raise PeripheralIdentityError("CST816T", 0xB5, chip_id)
+
+        try:
+            self.revision = self.Read_Revision()
             self.Stop_Sleep()
-        else    :
-            print("Error: Not Detected CST816T.")
-            return None
-        self.Mode = mode
-        self.Gestures="None"
-        self.Flag = self.Flgh =self.l = 0
-        self.X_point = self.Y_point = 0
-        self.int.irq(handler=self.Int_Callback,trigger=Pin.IRQ_FALLING)
+            self.Mode = mode
+            self.Gestures = 0
+            self.Flag = self.Flgh =self.l = 0
+            self.X_point = self.Y_point = 0
+            self.int.irq(
+                handler=self.Int_Callback,
+                trigger=pin_factory.IRQ_FALLING,
+            )
+        except PeripheralIOError as error:
+            raise PeripheralIOError("CST816T", "configuration", error.detail)
+        except OSError as error:
+            raise PeripheralIOError("CST816T", "configuration", error)
+
+        print("Success: Detected CST816T.")
+        print("CST816T Revision = {}".format(self.revision))
       
     def _read_byte(self,cmd):
-        rec=self._bus.readfrom_mem(int(self._address),int(cmd),1)
+        try:
+            rec=self._bus.readfrom_mem(int(self._address),int(cmd),1)
+        except OSError as error:
+            raise PeripheralIOError("CST816T", "register read", error)
+        if len(rec) != 1:
+            raise PeripheralIOError("CST816T", "register read", "short I2C read")
         return rec[0]
     
     def _read_block(self, reg, length=1):
-        rec=self._bus.readfrom_mem(int(self._address),int(reg),length)
+        try:
+            rec=self._bus.readfrom_mem(int(self._address),int(reg),length)
+        except OSError as error:
+            raise PeripheralIOError("CST816T", "register read", error)
+        if len(rec) != length:
+            raise PeripheralIOError("CST816T", "register read", "short I2C read")
         return rec
     
     def _write_byte(self,cmd,val):
-        self._bus.writeto_mem(int(self._address),int(cmd),bytes([int(val)]))
+        try:
+            self._bus.writeto_mem(int(self._address),int(cmd),bytes([int(val)]))
+        except OSError as error:
+            raise PeripheralIOError("CST816T", "register write", error)
 
     def WhoAmI(self):
         if (0xB5) != self._read_byte(0xA7):
@@ -65,9 +122,9 @@ class Touch_CST816T(object):
     #Reset   
     def Reset(self):
         self.rst(0)
-        time.sleep_ms(1)
+        _sleep_ms(self._clock, 1)
         self.rst(1)
-        time.sleep_ms(50)
+        _sleep_ms(self._clock, 50)
         self._configured_mode = None
     
     #Set mode 
