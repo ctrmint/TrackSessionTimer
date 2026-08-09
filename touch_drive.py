@@ -109,12 +109,26 @@ class Touch_CST816T(object):
     def BootScreen(self, LCD, sleep=4, version_number="0.0"):
         self.mode = 0
         self.Set_Mode(self.Mode)
-        LCD.fill(LCD.red)
-        LCD.write_centered('Track',55,3,LCD.green)
-        LCD.write_centered('Session',90,3,LCD.green)
-        LCD.write_centered('Timer',125,3,LCD.green)
-        LCD.write_centered(('Version ' + version_number),195,1,LCD.green)
+
+        splash_loaded = False
+        try:
+            # Import after LCD construction so the 115,200-byte framebuffer is
+            # allocated before this optional startup feature uses any heap.
+            from splash import load_splash
+            splash_loaded = load_splash(LCD)
+        except (ImportError, OSError):
+            pass
+
+        if splash_loaded:
+            LCD.write_centered(('Version ' + version_number),205,1,LCD.white)
+        else:
+            LCD.fill(LCD.red)
+            LCD.write_centered('Track',55,3,LCD.green)
+            LCD.write_centered('Session',90,3,LCD.green)
+            LCD.write_centered('Timer',125,3,LCD.green)
+            LCD.write_centered(('Version ' + version_number),195,1,LCD.green)
         LCD.show()
+        return splash_loaded
         
     def SetBackColour(self, LCD, backColour):
         if backColour == 'green':
