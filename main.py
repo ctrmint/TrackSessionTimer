@@ -5,6 +5,12 @@
 import time
 
 from configuration import set_sensitivity, set_session
+from hardware import (
+    PeripheralError,
+    initialize_optional_imu,
+    initialize_with_retry,
+    show_hardware_message,
+)
 from launch import accel_launch
 from lcd_1inch28 import LCD_1inch28
 from live_display import (
@@ -31,6 +37,29 @@ PLINE1 = [PIT_SESSION_MSG[0], None, 88, 3, "white"]
 PLINE2 = [PIT_SESSION_MSG[1], None, 145, 2, "red"]
 
 
+def _show_touch_failure(lcd, error):
+    print("Timer stopped: {}".format(error))
+    show_hardware_message(
+        lcd,
+        "Touch error",
+        ["Touch not detected", "Check board / I2C", "Restart timer"],
+    )
+
+
+def _show_imu_degraded(lcd, error):
+    print("Normal timing remains available: {}".format(error))
+    show_hardware_message(
+        lcd,
+        "Launch disabled",
+        ["IMU not available", "Normal timer works", "Check board / I2C"],
+        background=lcd.brown,
+    )
+
+
+def _initialize_imu(sensitivity):
+    return initialize_optional_imu(sensitivity, QMI8658)
+
+
 def main():
     system_params, user_params = load_configuration(PARAMS_FILE, USER_FILE)
     duration_values = system_params["DURATION_VALUES"]
@@ -42,19 +71,29 @@ def main():
 
     print("User Parameters: " + str(user_params))
 
-    # Gyro and accelerometer
-    qmi8658 = QMI8658()
-
     # Display and touchscreen
     lcd = LCD_1inch28()
     lcd.set_bl_pwm(65535)
-    touch = Touch_CST816T(mode=1, LCD=lcd)
+    try:
+        touch = initialize_with_retry(
+            lambda: Touch_CST816T(mode=1, LCD=lcd),
+            "CST816T",
+        )
+        touch.BootScreen(lcd, version_number=version)
+    except PeripheralError as error:
+        _show_touch_failure(lcd, error)
+        return False
 
-    touch.BootScreen(lcd, version_number=version)
     time.sleep(boot_delay_sec)
 
+    qmi8658, imu_error = _initialize_imu(user_params["SENSITIVITY"])
+    if imu_error is not None:
+        _show_imu_degraded(lcd, imu_error)
+        time.sleep(2)
+
     while True:
-        sensitivity = user_params["SENSITIVITY"]
+        configured_sensitivity = user_params["SENSITIVITY"]
+        sensitivity = configured_sensitivity if qmi8658 is not None else 0
         race_length = user_params["RACE_LENGTH"]
         rest_length = user_params["REST_LENGTH"]
 
@@ -88,15 +127,28 @@ def main():
                 )
                 user_params, _ = persist_setting(USER_FILE, user_params, "REST_LENGTH", rest_length)
             elif gesture == "up":
-                sensitivity = set_sensitivity(
+                configured_sensitivity = set_sensitivity(
                     LCD=lcd,
                     Touch=touch,
                     sensitivity_values=launch_sense_values,
-                    sensitivity=sensitivity,
+                    sensitivity=configured_sensitivity,
                     operation="Config",
                     back_colour="palegreen",
                 )
-                user_params, _ = persist_setting(USER_FILE, user_params, "SENSITIVITY", sensitivity)
+                user_params, _ = persist_setting(
+                    USER_FILE,
+                    user_params,
+                    "SENSITIVITY",
+                    configured_sensitivity,
+                )
+                if configured_sensitivity > 0 and qmi8658 is None:
+                    qmi8658, imu_error = _initialize_imu(configured_sensitivity)
+                    if imu_error is not None:
+                        _show_imu_degraded(lcd, imu_error)
+                        time.sleep(2)
+                sensitivity = (
+                    configured_sensitivity if qmi8658 is not None else 0
+                )
             elif gesture == "down":
                 print("Timer go!")
                 launch = True
@@ -112,11 +164,17 @@ def main():
         else:
             touch.GoScreen(lcd)
 
-        launch_detected = accel_launch(
-            qmi8658,
-            sensitivity=sensitivity,
-            cancel_check=lambda: touch.StopGesture(lcd),
-        )
+        try:
+            launch_detected = accel_launch(
+                qmi8658,
+                sensitivity=sensitivity,
+                cancel_check=lambda: touch.StopGesture(lcd),
+            )
+        except PeripheralError as error:
+            qmi8658 = None
+            _show_imu_degraded(lcd, error)
+            time.sleep(2)
+            continue
         if not launch_detected:
             print("Launch mode cancelled or timed out.")
             continue

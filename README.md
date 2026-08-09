@@ -113,7 +113,7 @@ The second command should identify an RP2040 MicroPython board.
 Run these commands from the repository root. Supporting files and font assets are copied first; `main.py` is installed last as the automatic entry point.
 
 ```sh
-mpremote connect auto fs cp configuration.py font_data.py font_renderer.py launch.py lcd_1inch28.py live_display.py params.json qmi8658.py settings.py splash.py timing.py touch_drive.py font_data*.bin startup_splash.rgb565 :
+mpremote connect auto fs cp configuration.py font_data.py font_renderer.py hardware.py launch.py lcd_1inch28.py live_display.py params.json qmi8658.py settings.py splash.py timing.py touch_drive.py font_data*.bin startup_splash.rgb565 :
 mpremote connect auto fs cp main.py :
 mpremote connect auto reset
 ```
@@ -136,7 +136,14 @@ If first boot fails:
 * The original text-only splash means `startup_splash.rgb565` is missing or has the wrong size; repeat the application upload command.
 * An import error generally means a `.py` support module was omitted; repeat the upload command and keep `main.py` last.
 * No serial device after flashing usually indicates a charge-only USB cable, an incorrect UF2, or a board still in BOOT mode.
-* A missing touchscreen or IMU error indicates unsupported hardware or a board-level connection problem.
+* A touchscreen hardware error is a controlled stop: check that this is the supported integrated board, then restart it. The serial message includes the failed operation or unexpected chip ID.
+* An IMU hardware error disables Launch Mode for the current run. Swipe down to use the normal timer, which remains available without the IMU.
+
+### Peripheral failure policy
+
+The touchscreen is required for safe operation. A transient touchscreen I2C failure is retried three times at 100 ms intervals; an unexpected chip ID is not retried. If detection still fails, the firmware shows an actionable error, logs the detailed cause over serial, and stops before using an incomplete touch object.
+
+The QMI8658 IMU is optional unless a non-zero Launch Mode sensitivity is selected. It is not initialized when Launch Mode is off. Transient initialization failures receive the same three attempts, while an unexpected chip ID fails immediately. If initialization or a launch-time sample fails, Launch Mode is disabled for the current run and the standard swipe-down timer remains available. The saved sensitivity is retained so the firmware can retry after a restart or the next Launch Mode configuration change.
 
 ## Configuration files
 

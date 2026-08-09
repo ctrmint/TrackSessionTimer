@@ -1,7 +1,6 @@
-from machine import Pin,I2C,SPI,PWM,Timer,ADC
-import framebuf
-import time
-Vbat_Pin = 29
+from machine import I2C, Pin
+
+from hardware import PeripheralIOError, PeripheralIdentityError
 
 #Pin definition 
 I2C_SDA = 6
@@ -20,18 +19,37 @@ BL = 25
 
 
 class QMI8658(object):
-    def __init__(self,address=0X6B):
+    def __init__(self,address=0X6B, bus=None):
         self._address = address
-        self._bus = I2C(id=1,scl=Pin(I2C_SDL),sda=Pin(I2C_SDA),freq=100_000)
-        bRet=self.WhoAmI()
-        if bRet :
-            self.Read_Revision()
-        else    :
-            return NULL
-        self.Config_apply()
+        try:
+            self._bus = bus
+            if self._bus is None:
+                self._bus = I2C(
+                    id=1,
+                    scl=Pin(I2C_SDL),
+                    sda=Pin(I2C_SDA),
+                    freq=100_000,
+                )
+        except OSError as error:
+            raise PeripheralIOError("QMI8658", "I2C setup", error)
+
+        try:
+            chip_id = self._read_byte(0x00)
+        except OSError as error:
+            raise PeripheralIOError("QMI8658", "chip ID read", error)
+        if chip_id != 0x05:
+            raise PeripheralIdentityError("QMI8658", 0x05, chip_id)
+
+        try:
+            self.revision = self.Read_Revision()
+            self.Config_apply()
+        except OSError as error:
+            raise PeripheralIOError("QMI8658", "configuration", error)
 
     def _read_byte(self,cmd):
         rec=self._bus.readfrom_mem(int(self._address),int(cmd),1)
+        if len(rec) != 1:
+            raise OSError("short I2C read")
         return rec[0]
     def _read_block(self, reg, length=1):
         rec=self._bus.readfrom_mem(int(self._address),int(reg),length)
@@ -68,14 +86,13 @@ class QMI8658(object):
 
     def Read_Raw_XYZ(self):
         xyz=[0,0,0,0,0,0]
-        raw_timestamp = self._read_block(0x30,3)
-        raw_acc_xyz=self._read_block(0x35,6)
-        raw_gyro_xyz=self._read_block(0x3b,6)
-        raw_xyz=self._read_block(0x35,12)
-        timestamp = (raw_timestamp[2]<<16)|(raw_timestamp[1]<<8)|(raw_timestamp[0])
+        try:
+            raw_xyz=self._read_block(0x35,12)
+        except OSError as error:
+            raise PeripheralIOError("QMI8658", "sample read", error)
+        if len(raw_xyz) != 12:
+            raise PeripheralIOError("QMI8658", "sample read", "short I2C read")
         for i in range(6):
-            # xyz[i]=(raw_acc_xyz[(i*2)+1]<<8)|(raw_acc_xyz[i*2])
-            # xyz[i+3]=(raw_gyro_xyz[((i+3)*2)+1]<<8)|(raw_gyro_xyz[(i+3)*2])
             xyz[i] = (raw_xyz[(i*2)+1]<<8)|(raw_xyz[i*2])
             if xyz[i] >= 32767:
                 xyz[i] = xyz[i]-65535
