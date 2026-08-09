@@ -1,4 +1,4 @@
-# User Guide -v3.1
+# User Guide - v3.2
 
 ## General / Sessions Use
 The following describes general operation of both the ``Track Session`` and ``Rest in Pits Session`` timer.
@@ -14,8 +14,8 @@ The following describes general operation of both the ``Track Session`` and ``Re
 * Following termination, a ``Rest in Pits`` splash will display, followed by commencement of the ``Rest in Pits Session`` timer.
 * Once the ``Rest in Pits Session`` is complete, the timer will return to the ``Primary screen``.  The ``Rest in Pits  Session``  can be terminated with a ``Double Tap``.
 
-## Configuration / Setup 
-All settings are stored from session to session while the timer has power.  Settings are wiped if power is lost.
+## Configuration / Setup
+Track duration, rest duration, and launch sensitivity are saved to `user.json` when changed. These settings persist across restarts and power loss. If the file is missing, damaged, or contains unsupported values, the timer restores safe defaults and rewrites the file using the canonical v3.2 setting names.
 
 ### Session Duration
 It is possible to change the duration of both the ``Track Session`` and the ``Rest in Pits``.
@@ -29,4 +29,5 @@ It is possible to change the duration of both the ``Track Session`` and the ``Re
 ``Launch mode`` can be enabled by defining a ``Launch Sensitivity`` value above zero.
 * From the ``Primary Screen``, ``Swipe Up`` to edit ``Launch Sensitivity``.
 * Swipe ``Left`` or ``Right`` to select an appropriate value greater than zero.
-* Swip ``UP`` to save and enable ``Launch mode``
+* Swipe ``UP`` to save and enable ``Launch mode``.
+* Select `0` and swipe ``UP`` to save and disable ``Launch mode``.
