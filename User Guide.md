@@ -22,14 +22,14 @@ Track duration, rest duration, and launch sensitivity are saved to `user.json` w
 It is possible to change the duration of both the ``Track Session`` and the ``Rest in Pits``.
 
 * From the ``Primary Screen``, ``Swipe Left`` to edit the ``Track Session`` and ``Swipe Right`` to edit the ``Rest in Pits  Session``.
-* Once in either edit modes, use a ``Swipe Right`` to increment the duration and a ``Swipe Left`` to decrement the value.  Note duration values are predefined as [1, 5, 10, 15, 20, 25, 30, 40, 50, 60] minutes.
-* When the desired duration value is shown ``Swipe Up`` to save and return to the ``Primary Screen``
+* Once in either edit mode, follow the on-screen prompts: ``Swipe Right`` to increment the duration and ``Swipe Left`` to decrement the value. Note duration values are predefined as [1, 5, 10, 15, 20, 25, 30, 40, 50, 60] minutes.
+* When the desired duration value is shown, follow the ``Swipe UP: save`` prompt to save and return to the ``Primary Screen``.
 
 ### Launch Mode
 ``Launch mode`` is disabled by default.
 ``Launch mode`` can be enabled by defining a ``Launch Sensitivity`` value above zero.
 * From the ``Primary Screen``, ``Swipe Up`` to edit ``Launch Sensitivity``.
-* Swipe ``Left`` or ``Right`` to select an appropriate value greater than zero.
+* Follow the on-screen prompts and swipe ``Left`` or ``Right`` to select an appropriate value greater than zero.
 * Swipe ``UP`` to save and enable ``Launch mode``.
 * Select `0` and swipe ``UP`` to save and disable ``Launch mode``.
 

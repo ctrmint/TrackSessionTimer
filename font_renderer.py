@@ -70,7 +70,16 @@ def _draw_scanlines(surface, bitmap, width, height, x, y, color):
             surface.hline(x + run_start, y + row, width - run_start, color)
 
 
-def _blit_glyph(surface, bitmap, width, height, x, y, palette):
+def _blit_glyph(
+    surface,
+    bitmap,
+    width,
+    height,
+    x,
+    y,
+    palette,
+    transparent_key,
+):
     glyph_buffer = bytearray(bitmap)
     # Generated rows are padded to whole bytes and store the left-most pixel in
     # bit 7. MicroPython needs an explicit padded stride and MONO_HLSB for that
@@ -79,7 +88,7 @@ def _blit_glyph(surface, bitmap, width, height, x, y, palette):
     glyph = framebuf.FrameBuffer(
         glyph_buffer, width, height, framebuf.MONO_HLSB, stride,
     )
-    surface.blit(glyph, x, y, 0, palette)
+    surface.blit(glyph, x, y, transparent_key, palette)
 
 
 def draw_text(surface, text, x, y, size, color):
@@ -93,10 +102,15 @@ def draw_text(surface, text, x, y, size, color):
 
     palette = None
     palette_buffer = None
+    transparent_key = None
     if use_blitter:
+        # A distinct palette value is required for transparency. Using black
+        # as the key also discards black foreground glyphs after palette
+        # mapping, which made configuration labels and prompts invisible.
+        transparent_key = 1 if color != 1 else 2
         palette_buffer = bytearray(4)
         palette = framebuf.FrameBuffer(palette_buffer, 2, 1, framebuf.RGB565)
-        palette.pixel(0, 0, 0)
+        palette.pixel(0, 0, transparent_key)
         palette.pixel(1, 0, color)
 
     with open(BITMAP_FILES[size_index], "rb") as bitmap_file:
@@ -110,7 +124,16 @@ def draw_text(surface, text, x, y, size, color):
                 raise OSError("Font bitmap is missing or truncated")
 
             if use_blitter:
-                _blit_glyph(surface, bitmap, width, height, cursor, int(y), palette)
+                _blit_glyph(
+                    surface,
+                    bitmap,
+                    width,
+                    height,
+                    cursor,
+                    int(y),
+                    palette,
+                    transparent_key,
+                )
             else:
                 _draw_scanlines(surface, bitmap, width, height, cursor, int(y), color)
             cursor += width
