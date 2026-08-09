@@ -18,10 +18,10 @@ def set_sensitivity(LCD=None, Touch=None, sensitivity_values=None, sensitivity=0
 
     def draw():
         text_array = [
-            [str(values[index]), 60, 80, 5, "white"],
-            ["Launch", 75, 150, 2, "black"],
-            ["Sensitivity", 20, 180, 2, "black"],
-            [operation, 75, 35, 2, "black"],
+            [str(values[index]), None, 80, 5, "white"],
+            ["Launch", None, 145, 2, "black"],
+            ["Sensitivity", None, 175, 2, "black"],
+            [operation, None, 35, 2, "black"],
         ]
         Touch.ControlScreen(LCD, text_array=text_array, back_colour=back_colour)
 
@@ -47,9 +47,9 @@ def set_session(LCD=None, Touch=None, session=None, session_values=None,
 
     def draw():
         text_array = [
-            [str(values[index]), 70, 96, 5, "white"],
-            [session_name, 75, 195, 2, "black"],
-            [operation, 75, 35, 2, "black"],
+            [str(values[index]), None, 90, 5, "white"],
+            [session_name, None, 180, 2, "black"],
+            [operation, None, 35, 2, "black"],
         ]
         Touch.ControlScreen(LCD, text_array=text_array, back_colour=back_colour)
 
