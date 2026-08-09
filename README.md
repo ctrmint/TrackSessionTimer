@@ -61,4 +61,22 @@ The instructions enable the software on the required hardware.   These instructi
 * Copy the .py files
 * Copy the uf2 file, the Pico should restart, and the timer automatically starts.
 
+## Configuration files
+
+Version 3.2 uses two separate configuration scopes:
+
+* `params.json` contains system-owned choices and display behavior: `DURATION_VALUES`, `LAUNCH_SENSE_VALUES`, `VERSION`, `DISPLAY_DELAY_REST`, `DISPLAY_DELAY_REST_COLOUR`, and `BOOT_DELAY_SEC`.
+* `user.json` contains the current user selections: `RACE_LENGTH` (track-session minutes), `REST_LENGTH` (pit-rest minutes), and `SENSITIVITY` (launch threshold; `0` disables Launch Mode).
+
+The firmware has built-in system and user defaults. Missing, malformed, or unsupported user values are replaced with safe defaults and saved using the canonical keys above. Existing `TRACK_LENGTH`, `TRACK_SESSION_LENGTH`, and `REST_SESSION_LENGTH` user keys are migrated automatically.
+
+## Host-side tests
+
+Run the hardware-independent regression suite with:
+
+```sh
+python -m unittest discover -s tests -v
+```
+
+The suite uses fakes for time, touch gestures, display calls, filesystem operations, and accelerometer samples. It does not validate physical SPI/I2C wiring, LCD rendering, touchscreen recognition, QMI8658 readings, or real-world launch thresholds; those behaviors still require the selected target hardware.
 
