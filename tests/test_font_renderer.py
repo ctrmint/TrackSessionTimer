@@ -105,6 +105,19 @@ class FontRendererTests(unittest.TestCase):
         self.assertEqual(((glyph_width + 7) // 8) * 8, glyph_call[4])
         self.assertEqual(1, len(surface.blits))
 
+    def test_hardware_blit_does_not_treat_black_text_as_transparent(self):
+        fake_framebuf = FakeFrameBufferModule()
+        surface = FakeBlitSurface()
+        original_framebuf = font_renderer.framebuf
+        font_renderer.framebuf = fake_framebuf
+        try:
+            draw_text(surface, "Config", 3, 4, 1, 0)
+        finally:
+            font_renderer.framebuf = original_framebuf
+
+        self.assertTrue(surface.blits)
+        self.assertTrue(all(blit[3] != 0 for blit in surface.blits))
+
     def test_centering_uses_measured_width(self):
         surface = FakeSurface()
         x, width = draw_centered(surface, "Ready", 20, 5, 1)

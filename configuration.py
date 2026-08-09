@@ -1,6 +1,16 @@
 """Touch-driven configuration editors with injected display dependencies."""
 
 
+CONFIGURATION_PROMPTS = (
+    ("Swipe L/R to change", None, 205, 1, "black"),
+    ("Swipe UP: save", None, 222, 1, "black"),
+)
+
+
+def _with_prompts(text_array):
+    return text_array + list(CONFIGURATION_PROMPTS)
+
+
 def _selected_index(values, current):
     if not values:
         raise ValueError("At least one selectable value is required")
@@ -17,12 +27,14 @@ def set_sensitivity(LCD=None, Touch=None, sensitivity_values=None, sensitivity=0
     index = _selected_index(values, sensitivity)
 
     def draw():
-        text_array = [
-            [str(values[index]), None, 80, 5, "white"],
-            ["Launch", None, 145, 2, "black"],
-            ["Sensitivity", None, 175, 2, "black"],
-            [operation, None, 35, 2, "black"],
-        ]
+        text_array = _with_prompts(
+            [
+                [str(values[index]), None, 80, 5, "white"],
+                ["Launch", None, 145, 2, "black"],
+                ["Sensitivity", None, 175, 2, "black"],
+                [operation, None, 35, 2, "black"],
+            ]
+        )
         Touch.ControlScreen(LCD, text_array=text_array, back_colour=back_colour)
 
     draw()
@@ -46,11 +58,13 @@ def set_session(LCD=None, Touch=None, session=None, session_values=None,
     index = _selected_index(values, current)
 
     def draw():
-        text_array = [
-            [str(values[index]), None, 90, 5, "white"],
-            [session_name, None, 180, 2, "black"],
-            [operation, None, 35, 2, "black"],
-        ]
+        text_array = _with_prompts(
+            [
+                [str(values[index]), None, 90, 5, "white"],
+                [session_name, None, 180, 2, "black"],
+                [operation, None, 35, 2, "black"],
+            ]
+        )
         Touch.ControlScreen(LCD, text_array=text_array, back_colour=back_colour)
 
     draw()

@@ -1,7 +1,9 @@
+import math
 import unittest
 from types import SimpleNamespace
 
-from configuration import set_sensitivity, set_session
+from configuration import CONFIGURATION_PROMPTS, set_sensitivity, set_session
+from font_renderer import measure_text, pixel_height
 
 
 class FakeTouch:
@@ -19,6 +21,46 @@ class FakeTouch:
 class ConfigurationEditorTests(unittest.TestCase):
     duration_values = [1, 5, 10, 15, 20, 25, 30, 40, 50, 60]
     sensitivity_values = [0, 0.5, 1, 1.25, 1.5, 1.75, 2, 2.5, 3.5, 4]
+
+    def assert_prompts_shown(self, touch):
+        expected = list(CONFIGURATION_PROMPTS)
+        for _, text_array, _ in touch.screens:
+            self.assertEqual(expected, text_array[-len(expected):])
+
+    def test_prompts_fit_inside_the_round_display(self):
+        display_radius = 120
+        for text, _, y_position, size, _ in CONFIGURATION_PROMPTS:
+            text_center_y = y_position + (pixel_height(size) / 2)
+            distance_from_center = text_center_y - display_radius
+            visible_width = 2 * math.sqrt(
+                (display_radius ** 2) - (distance_from_center ** 2)
+            )
+            self.assertLessEqual(measure_text(text, size), visible_width)
+
+    def test_session_prompts_are_shown_on_every_redraw(self):
+        touch = FakeTouch(["right", "up"])
+        set_session(
+            LCD=object(),
+            Touch=touch,
+            session=SimpleNamespace(duration_mins=self.duration_values[0]),
+            session_values=self.duration_values,
+            session_name="Track",
+        )
+
+        self.assertEqual(2, len(touch.screens))
+        self.assert_prompts_shown(touch)
+
+    def test_sensitivity_prompts_are_shown_on_every_redraw(self):
+        touch = FakeTouch(["left", "up"])
+        set_sensitivity(
+            LCD=object(),
+            Touch=touch,
+            sensitivity_values=self.sensitivity_values,
+            sensitivity=self.sensitivity_values[0],
+        )
+
+        self.assertEqual(2, len(touch.screens))
+        self.assert_prompts_shown(touch)
 
     def test_session_immediate_save_preserves_every_allowed_value(self):
         for current in self.duration_values:
