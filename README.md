@@ -47,6 +47,17 @@ python tools/generate_font.py /path/to/Montserrat-SemiBold.otf font_data.py
 
 The generated font data is distributed under the SIL Open Font License 1.1 in `FONT_LICENSE.txt`.
 
+## Startup splash
+
+At startup, the timer displays the supplied Caterham artwork on a black background sized for the 240x240 round display. The image is stored as a native `startup_splash.rgb565` framebuffer and loaded directly into the LCD's existing buffer, avoiding a second full-screen allocation on the RP2040. If the asset is absent or has the wrong size, the original text splash is shown instead.
+
+The original artwork and a device-layout preview are kept under `assets/`. To regenerate the runtime asset after changing the source image, install Pillow and run:
+
+```sh
+python tools/convert_splash.py assets/startup_splash.gif startup_splash.rgb565 \
+  --preview assets/startup_splash_preview.png
+```
+
 ## Supported hardware
 
 Version 3.3 supports the integrated [Waveshare RP2040-Touch-LCD-1.28](https://www.waveshare.com/product/rp2040-touch-lcd-1.28.htm). This board combines the RP2040, GC9A01A 240x240 LCD, CST816S touchscreen, and QMI8658 IMU used by the firmware. The standalone 1.28-inch Touch LCD connected to a separate Raspberry Pi Pico uses a different pin map and is not currently supported.
@@ -96,7 +107,7 @@ The second command should identify an RP2040 MicroPython board.
 Run these commands from the repository root. Supporting files and font assets are copied first; `main.py` is installed last as the automatic entry point.
 
 ```sh
-mpremote connect auto fs cp configuration.py font_data.py font_renderer.py launch.py lcd_1inch28.py params.json qmi8658.py settings.py timing.py touch_drive.py font_data*.bin :
+mpremote connect auto fs cp configuration.py font_data.py font_renderer.py launch.py lcd_1inch28.py params.json qmi8658.py settings.py splash.py timing.py touch_drive.py font_data*.bin startup_splash.rgb565 :
 mpremote connect auto fs cp main.py :
 mpremote connect auto reset
 ```
@@ -111,11 +122,12 @@ When upgrading an existing device, omit that command so its saved track duration
 
 ### 4. Verify first boot
 
-The display should show the v3.3 splash and then the green **Ready** screen. The serial console should report the loaded user parameters, `Success:Detected CST816T.`, and the touchscreen revision without a traceback.
+The display should show the Caterham v3.3 splash and then the green **Ready** screen. The serial console should report the loaded user parameters, `Success:Detected CST816T.`, and the touchscreen revision without a traceback.
 
 If first boot fails:
 
 * `OSError: Font bitmap is missing or truncated` means one or more `font_data*.bin` files were not copied.
+* The original text-only splash means `startup_splash.rgb565` is missing or has the wrong size; repeat the application upload command.
 * An import error generally means a `.py` support module was omitted; repeat the upload command and keep `main.py` last.
 * No serial device after flashing usually indicates a charge-only USB cable, an incorrect UF2, or a board still in BOOT mode.
 * A missing touchscreen or IMU error indicates unsupported hardware or a board-level connection problem.
