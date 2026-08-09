@@ -98,11 +98,23 @@ def main():
             time.sleep(0.5)
 
         if sensitivity > 0:
-            touch.GoScreen(lcd, text="lights!")
+            touch.GoScreen(
+                lcd,
+                text="lights!",
+                subtitle="Double tap to cancel",
+            )
         else:
             touch.GoScreen(lcd)
 
-        accel_launch(qmi8658, sensitivity=sensitivity)
+        launch_detected = accel_launch(
+            qmi8658,
+            sensitivity=sensitivity,
+            cancel_check=lambda: touch.StopGesture(lcd),
+        )
+        if not launch_detected:
+            print("Launch mode cancelled or timed out.")
+            continue
+
         track_session.start_session()
 
         while track_session.live is True:

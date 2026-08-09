@@ -199,11 +199,13 @@ class Touch_CST816T(object):
         LCD.show()
         
         
-    def GoScreen(self, LCD, text='..GO!'):
+    def GoScreen(self, LCD, text='..GO!', subtitle=None):
         #self.mode = 0
         #self.Set_Mode(self.Mode)
         LCD.fill(LCD.green)
         LCD.write_centered(text,92,4,LCD.white)
+        if subtitle is not None:
+            LCD.write_centered(subtitle,170,1,LCD.black)
         LCD.show()
         time.sleep(1)
 

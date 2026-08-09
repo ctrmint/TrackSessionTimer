@@ -5,7 +5,8 @@ The following describes general operation of both the ``Track Session`` and ``Re
 
 * Upon start up a boot splash will be shown for 2 seconds.
 * After which the ``Primary Screen`` will be shown, detailing the current track session duration in minutes, and the statement ``Ready``.  This indicates the timer is ready to start.  To start the ``Track Session`` or race, ``Swipe Down``.
-* After swiping down,``Go`` will display briefly.  If ``Launch Mode`` has been activited, ``Lights`` will be displayed.  The timer will commence upon sufficient acceleration.
+* After swiping down, ``Go`` will display briefly. If ``Launch Mode`` has been activated, ``Lights`` will be displayed while the timer measures a stationary baseline and waits for sufficient acceleration.
+* While waiting in ``Launch Mode``, double-tap to cancel and return to the ``Primary Screen``. The wait also cancels automatically after 30 seconds.
 * Upon starting, the ``Track Session`` timer count down will be displayed, and immediately commence.
 * At 85% completion of the ``Track Session`` the timer display colours will change to highlight progression.
 * At 95% completion of the ``Track Session`` the timer display colours will again change, further highlighting progression and final expiry warning.
@@ -31,3 +32,20 @@ It is possible to change the duration of both the ``Track Session`` and the ``Re
 * Swipe ``Left`` or ``Right`` to select an appropriate value greater than zero.
 * Swipe ``UP`` to save and enable ``Launch mode``.
 * Select `0` and swipe ``UP`` to save and disable ``Launch mode``.
+
+Keep the timer stationary while ``Lights`` first appears. The firmware averages 20 samples over 0.4 seconds to remove gravity and the device's mounting orientation. It then measures the filtered change in the three-axis acceleration vector, so forward or reverse acceleration can trigger regardless of which way the display is mounted. A launch must remain above the threshold for three consecutive 20 ms samples; isolated vibration and bumps are ignored.
+
+Sensitivity values are acceleration changes in **g**, where approximately 1 g is Earth's gravitational acceleration. Lower non-zero values trigger more easily:
+
+| Value | Practical meaning |
+| ---: | --- |
+| `0` | Launch Mode disabled; timer starts immediately. |
+| `0.5` | Very sensitive; suitable for moderate road-car launches. |
+| `1` | Strong launch acceleration. |
+| `1.25` | Aggressive launch. |
+| `1.5` | Very aggressive launch. |
+| `1.75` | Motorsport-level acceleration or a strong jolt. |
+| `2` | High threshold; unlikely in normal road use. |
+| `2.5` | Very high threshold; mainly abrupt impacts. |
+| `3.5` | Extreme impact-level acceleration. |
+| `4` | Maximum configured threshold; specialist use only. |
