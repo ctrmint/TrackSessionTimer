@@ -63,14 +63,19 @@ def main():
     duration_values = system_params["DURATION_VALUES"]
     launch_sense_values = system_params["LAUNCH_SENSE_VALUES"]
     version = system_params["VERSION"]
-    boot_delay_sec = system_params["BOOT_DELAY_SEC"]
+    startup_splash_duration_sec = system_params["STARTUP_SPLASH_DURATION_SEC"]
+    hardware_splash_duration_sec = system_params["HARDWARE_SPLASH_DURATION_SEC"]
     display_delay_rest = system_params["DISPLAY_DELAY_REST"]
     display_delay_rest_colour = system_params["DISPLAY_DELAY_REST_COLOUR"]
 
     print("User Parameters: " + str(user_params))
 
     # Display and touchscreen
+    # Allocate the 115,200-byte framebuffer before importing optional startup
+    # presentation code. On the RP2040, doing this in the opposite order can
+    # fragment the heap enough to prevent the single large allocation.
     lcd = LCD_1inch28()
+    from hardware_splash import run_startup_screens
     lcd.set_bl_pwm(65535)
     battery_monitor = BatteryMonitor()
     try:
@@ -78,12 +83,16 @@ def main():
             lambda: Touch_CST816T(mode=1, LCD=lcd),
             "CST816T",
         )
-        touch.BootScreen(lcd, version_number=version)
+        run_startup_screens(
+            touch,
+            lcd,
+            firmware_version=version,
+            startup_duration_sec=startup_splash_duration_sec,
+            hardware_duration_sec=hardware_splash_duration_sec,
+        )
     except PeripheralError as error:
         _show_touch_failure(lcd, error)
         return False
-
-    time.sleep(boot_delay_sec)
 
     qmi8658, imu_error = _initialize_imu(user_params["SENSITIVITY"])
     if imu_error is not None:

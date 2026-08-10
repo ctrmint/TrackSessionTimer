@@ -105,6 +105,34 @@ class SettingsTests(unittest.TestCase):
         self.assertFalse(valid)
         self.assertEqual(DEFAULT_SYSTEM_PARAMS, params)
 
+        for duration_key in (
+            "STARTUP_SPLASH_DURATION_SEC",
+            "HARDWARE_SPLASH_DURATION_SEC",
+        ):
+            with self.subTest(duration_key=duration_key):
+                invalid_duration = dict(DEFAULT_SYSTEM_PARAMS)
+                invalid_duration[duration_key] = -1
+                params, valid = validate_system_params(invalid_duration)
+                self.assertFalse(valid)
+                self.assertEqual(DEFAULT_SYSTEM_PARAMS, params)
+
+    def test_splash_durations_default_to_two_seconds(self):
+        self.assertEqual(2, DEFAULT_SYSTEM_PARAMS["STARTUP_SPLASH_DURATION_SEC"])
+        self.assertEqual(2, DEFAULT_SYSTEM_PARAMS["HARDWARE_SPLASH_DURATION_SEC"])
+
+    def test_legacy_boot_delay_is_migrated(self):
+        legacy = dict(DEFAULT_SYSTEM_PARAMS)
+        del legacy["STARTUP_SPLASH_DURATION_SEC"]
+        del legacy["HARDWARE_SPLASH_DURATION_SEC"]
+        legacy["BOOT_DELAY_SEC"] = 1.5
+
+        params, valid = validate_system_params(legacy)
+
+        self.assertTrue(valid)
+        self.assertEqual(1.5, params["STARTUP_SPLASH_DURATION_SEC"])
+        self.assertEqual(2, params["HARDWARE_SPLASH_DURATION_SEC"])
+        self.assertNotIn("BOOT_DELAY_SEC", params)
+
     def test_missing_and_out_of_range_user_values_use_defaults(self):
         normalized, changed = normalize_user_params(None, DEFAULT_SYSTEM_PARAMS)
         self.assertTrue(changed)

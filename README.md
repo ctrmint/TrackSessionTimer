@@ -11,7 +11,7 @@ Trackday or race session timer.
 * Added configuration prompts and a complete Ready-screen settings summary.
 * Increased the countdown font and added fixed-width timer digits to prevent movement.
 * Added a Ready-screen battery gauge with an external-power lightning indicator.
-* Expanded hardware-independent regression coverage to 82 tests.
+* Expanded hardware-independent regression coverage to 89 tests.
 ### v3.3
 * Smooth proportional font rendering at native display resolution.
 * Centered typography and improved layout across timer, configuration, and diagnostic screens.
@@ -66,7 +66,9 @@ On the supported Waveshare board running MicroPython 1.21.0, five full live-scre
 
 ## Startup splash
 
-At startup, the timer displays the supplied Caterham artwork on a black background sized for the 240x240 round display. The image is stored as a native `startup_splash.rgb565` framebuffer and loaded directly into the LCD's existing buffer, avoiding a second full-screen allocation on the RP2040. If the asset is absent or has the wrong size, the original text splash is shown instead.
+Startup now has two consecutive screens. First, the timer displays the supplied Caterham artwork on a black background sized for the 240x240 round display. The image is stored as a native `startup_splash.rgb565` framebuffer and loaded directly into the LCD's existing buffer, avoiding a second full-screen allocation on the RP2040. If the asset is absent or has the wrong size, the original text splash is shown instead.
+
+The second screen uses high-contrast white text on black and identifies the hardware and runtime: board vendor and model, processor type, timer firmware, MicroPython version, and platform. Both screens default to two seconds. Their durations can be tuned independently in `params.json` with `STARTUP_SPLASH_DURATION_SEC` and `HARDWARE_SPLASH_DURATION_SEC`; zero skips the wait while still drawing that screen. Existing installations using `BOOT_DELAY_SEC` automatically apply that value to the first screen and use two seconds for the new hardware screen.
 
 The original artwork and a device-layout preview are kept under `assets/`. To regenerate the runtime asset after changing the source image, install Pillow and run:
 
@@ -142,7 +144,7 @@ The second command should identify an RP2040 MicroPython board.
 Run these commands from the repository root. Supporting files and font assets are copied first; `main.py` is installed last as the automatic entry point.
 
 ```sh
-mpremote connect auto fs cp battery.py configuration.py font_data.py font_renderer.py hardware.py launch.py lcd_1inch28.py live_display.py params.json qmi8658.py ready_screen.py settings.py splash.py timing.py touch_drive.py font_data*.bin startup_splash.rgb565 :
+mpremote connect auto fs cp battery.py configuration.py font_data.py font_renderer.py hardware.py hardware_splash.py launch.py lcd_1inch28.py live_display.py params.json qmi8658.py ready_screen.py settings.py splash.py timing.py touch_drive.py font_data*.bin startup_splash.rgb565 :
 mpremote connect auto fs cp main.py :
 mpremote connect auto reset
 ```
@@ -157,7 +159,7 @@ When upgrading an existing device, omit that command so its saved track duration
 
 ### 4. Verify first boot
 
-The display should show the Caterham v3.5 splash and then the green **Ready** screen. The serial console should report the loaded user parameters, `Success:Detected CST816T.`, and the touchscreen revision without a traceback.
+The display should show the Caterham v3.5 splash, the hardware-information splash, and then the green **Ready** screen. The serial console should report the loaded user parameters, `Success:Detected CST816T.`, and the touchscreen revision without a traceback.
 
 If first boot fails:
 
@@ -176,9 +178,9 @@ The QMI8658 IMU is optional unless a non-zero Launch Mode sensitivity is selecte
 
 ## Configuration files
 
-Version 3.2 uses two separate configuration scopes:
+Version 3.5 uses two separate configuration scopes:
 
-* `params.json` contains system-owned choices and display behavior: `DURATION_VALUES`, `LAUNCH_SENSE_VALUES`, `VERSION`, `DISPLAY_DELAY_REST`, `DISPLAY_DELAY_REST_COLOUR`, and `BOOT_DELAY_SEC`.
+* `params.json` contains system-owned choices and display behavior: `DURATION_VALUES`, `LAUNCH_SENSE_VALUES`, `VERSION`, `DISPLAY_DELAY_REST`, `DISPLAY_DELAY_REST_COLOUR`, `STARTUP_SPLASH_DURATION_SEC`, and `HARDWARE_SPLASH_DURATION_SEC`.
 * `user.json` contains the current user selections: `RACE_LENGTH` (track-session minutes), `REST_LENGTH` (pit-rest minutes), and `SENSITIVITY` (launch threshold; `0` disables Launch Mode).
 
 Launch sensitivity is the filtered change in acceleration-vector magnitude from a 0.4-second stationary baseline, measured in g. This removes gravity and mounting orientation and handles acceleration on either side of every axis. Lower non-zero values are more sensitive. Detection requires three consecutive samples above the threshold; double-tap cancels the wait, and a 30-second timeout returns to the Ready screen. See `User Guide.md` for the practical meaning of every configured value.
@@ -193,4 +195,4 @@ Run the hardware-independent regression suite with:
 python -m unittest discover -s tests -v
 ```
 
-The suite uses fakes for time, touch gestures, display calls, filesystem operations, accelerometer samples, battery readings, and USB power state. Version 3.5 was additionally validated on the supported Waveshare board for boot, LCD/font rendering, CST816S touchscreen detection, QMI8658 initialization, saved settings, launch behavior, and the Ready-screen battery indicator.
+The suite uses fakes for time, touch gestures, display calls, filesystem operations, accelerometer samples, battery readings, and USB power state. Version 3.5 was additionally validated on the supported Waveshare board for both startup screens, LCD/font rendering, CST816S touchscreen detection, QMI8658 initialization, saved settings, launch behavior, and the Ready-screen battery indicator.
