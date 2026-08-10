@@ -12,17 +12,23 @@ DEFAULT_SYSTEM_PARAMS = {
     "DURATION_VALUES": [1, 5, 10, 15, 20, 25, 30, 40, 50, 60],
     "DISPLAY_DELAY_REST": 5,
     "LAUNCH_SENSE_VALUES": [0, 0.5, 1, 1.25, 1.5, 1.75, 2, 2.5, 3.5, 4],
-    "VERSION": "3.5",
+    "VERSION": "4.0.0",
     "DISPLAY_DELAY_REST_COLOUR": "blue",
     "STARTUP_SPLASH_DURATION_SEC": 2,
     "HARDWARE_SPLASH_DURATION_SEC": 2,
+    "MODE_MENU_HOLD_SEC": 5,
 }
 
 DEFAULT_USER_PARAMS = {
     "SENSITIVITY": 0,
     "RACE_LENGTH": 20,
     "REST_LENGTH": 20,
+    "OPERATING_MODE": "timer",
+    "BRIGHTNESS_PERCENT": 100,
 }
+
+OPERATING_MODES = ("timer", "g")
+BRIGHTNESS_VALUES = (25, 50, 75, 100)
 
 LEGACY_USER_KEYS = {
     "TRACK_LENGTH": "RACE_LENGTH",
@@ -89,6 +95,10 @@ def validate_system_params(data):
         source["HARDWARE_SPLASH_DURATION_SEC"] = DEFAULT_SYSTEM_PARAMS[
             "HARDWARE_SPLASH_DURATION_SEC"
         ]
+    if "MODE_MENU_HOLD_SEC" not in source:
+        source["MODE_MENU_HOLD_SEC"] = DEFAULT_SYSTEM_PARAMS[
+            "MODE_MENU_HOLD_SEC"
+        ]
 
     valid = (
         _positive_int_list(source.get("DURATION_VALUES"))
@@ -99,6 +109,8 @@ def validate_system_params(data):
         and source.get("STARTUP_SPLASH_DURATION_SEC") >= 0
         and _is_number(source.get("HARDWARE_SPLASH_DURATION_SEC"))
         and source.get("HARDWARE_SPLASH_DURATION_SEC") >= 0
+        and _is_number(source.get("MODE_MENU_HOLD_SEC"))
+        and source.get("MODE_MENU_HOLD_SEC") > 0
         and isinstance(source.get("VERSION"), str)
         and len(source.get("VERSION")) > 0
         and source.get("DISPLAY_DELAY_REST_COLOUR") in DISPLAY_COLOURS
@@ -140,6 +152,14 @@ def normalize_user_params(data, system_params=None):
     race_length = migrated.get("RACE_LENGTH", default_race)
     rest_length = migrated.get("REST_LENGTH", default_rest)
     sensitivity = migrated.get("SENSITIVITY", default_sensitivity)
+    operating_mode = migrated.get(
+        "OPERATING_MODE",
+        DEFAULT_USER_PARAMS["OPERATING_MODE"],
+    )
+    brightness_percent = migrated.get(
+        "BRIGHTNESS_PERCENT",
+        DEFAULT_USER_PARAMS["BRIGHTNESS_PERCENT"],
+    )
 
     if (
         not isinstance(race_length, int)
@@ -155,11 +175,21 @@ def normalize_user_params(data, system_params=None):
         rest_length = default_rest
     if not _is_number(sensitivity) or sensitivity not in sensitivity_values:
         sensitivity = default_sensitivity
+    if operating_mode not in OPERATING_MODES:
+        operating_mode = DEFAULT_USER_PARAMS["OPERATING_MODE"]
+    if (
+        not isinstance(brightness_percent, int)
+        or isinstance(brightness_percent, bool)
+        or brightness_percent not in BRIGHTNESS_VALUES
+    ):
+        brightness_percent = DEFAULT_USER_PARAMS["BRIGHTNESS_PERCENT"]
 
     normalized = {
         "SENSITIVITY": sensitivity,
         "RACE_LENGTH": race_length,
         "REST_LENGTH": rest_length,
+        "OPERATING_MODE": operating_mode,
+        "BRIGHTNESS_PERCENT": brightness_percent,
     }
     return normalized, normalized != source
 
@@ -265,6 +295,14 @@ def persist_setting(file, json_data, key, value, debug=True):
     if updated is None or not file_out(file, updated, debug=debug):
         return json_data, False
     return updated, True
+
+
+def restore_user_defaults(file, debug=True):
+    """Atomically persist and return a fresh canonical default dictionary."""
+    defaults = _copy_params(DEFAULT_USER_PARAMS)
+    if not file_out(file, defaults, debug=debug):
+        return None, False
+    return defaults, True
 
 
 def load_configuration(params_file, user_file, debug=True):

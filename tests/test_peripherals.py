@@ -108,6 +108,23 @@ class PeripheralDriverTests(unittest.TestCase):
         self.assertEqual(0xB5, raised.exception.expected)
         self.assertEqual(0x00, raised.exception.actual)
 
+    def test_touch_reports_current_physical_press_state(self):
+        released = self.make_touch(FakeBus({0xA7: 0xB5, 0xA9: 1, 0x02: 0}))
+        pressed = self.make_touch(FakeBus({0xA7: 0xB5, 0xA9: 1, 0x02: 1}))
+
+        self.assertFalse(released.IsPressed())
+        self.assertTrue(pressed.IsPressed())
+
+    def test_pending_touch_input_can_be_cleared(self):
+        touch = self.make_touch(FakeBus({0xA7: 0xB5, 0xA9: 1}))
+        touch.Gestures = 12
+        touch.Flag = 1
+
+        touch.ClearPendingInput()
+
+        self.assertEqual(0, touch.Gestures)
+        self.assertEqual(0, touch.Flag)
+
     def test_absent_qmi_is_a_retryable_io_failure(self):
         with self.assertRaises(PeripheralIOError) as raised:
             qmi8658.QMI8658(bus=FakeBus(read_error=OSError("no device")))

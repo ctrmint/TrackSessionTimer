@@ -1,5 +1,7 @@
 {
     "SENSITIVITY": 0,
     "RACE_LENGTH": 10,
-    "REST_LENGTH": 10
+    "REST_LENGTH": 10,
+    "OPERATING_MODE": "timer",
+    "BRIGHTNESS_PERCENT": 100
     }

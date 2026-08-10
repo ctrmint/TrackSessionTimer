@@ -62,9 +62,15 @@ class ReadyScreenTests(unittest.TestCase):
                 "Rest 15m",
                 "Launch 0.5g",
                 "Swipe DOWN to start",
+                "Hold 5s: modes",
             ],
             [line[0] for line in lines],
         )
+
+    def test_hold_hint_reflects_configured_threshold(self):
+        lines = ready_screen_lines(20, 15, 0, True, mode_hold_seconds=3.5)
+
+        self.assertEqual("Hold 3.5s: modes", lines[-1][0])
 
     def test_launch_status_reflects_effective_mode(self):
         self.assertEqual("Launch OFF", launch_status(0, False))
