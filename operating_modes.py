@@ -3,6 +3,7 @@
 from settings import (
     BRIGHTNESS_VALUES,
     DEFAULT_USER_PARAMS,
+    DISPLAY_ROTATION_VALUES,
     OPERATING_MODES,
     persist_setting,
     restore_user_defaults,
@@ -21,6 +22,7 @@ MODE_CHOICES = (
 
 SETTINGS_CHOICES = (
     ("Brightness", "brightness"),
+    ("Rotation", "rotation"),
     ("Restore defaults", "restore"),
     ("Back", "back"),
 )
@@ -153,6 +155,56 @@ def select_brightness(touch, lcd, current):
             return original, False
 
 
+def apply_rotation(lcd, touch, degrees):
+    """Apply one mount angle to rendering and directional gestures."""
+    lcd.set_rotation(degrees)
+    touch.Set_Rotation(degrees)
+
+
+def rotation_lines(degrees):
+    return [
+        ["Mount rotation", None, 35, 2, "white"],
+        ["{} deg".format(degrees), None, 88, 4, "white"],
+        ["Device clockwise", None, 150, 1, "white"],
+        ["L/R: rotate", None, 180, 1, "white"],
+        ["UP: save", None, 202, 1, "white"],
+        ["DOWN: cancel", None, 220, 1, "white"],
+    ]
+
+
+def select_rotation(touch, lcd, current):
+    """Preview mount rotations and return ``(value, should_save)``."""
+    values = list(DISPLAY_ROTATION_VALUES)
+    try:
+        index = values.index(current)
+    except ValueError:
+        index = values.index(DEFAULT_USER_PARAMS["DISPLAY_ROTATION_DEG"])
+    original = values[index]
+
+    def draw():
+        apply_rotation(lcd, touch, values[index])
+        touch.ControlScreen(
+            lcd,
+            text_array=rotation_lines(values[index]),
+            back_colour="black",
+        )
+
+    draw()
+    while True:
+        gesture = touch.GetGesture(lcd)
+        if gesture == "left":
+            index = (index - 1) % len(values)
+            draw()
+        elif gesture == "right":
+            index = (index + 1) % len(values)
+            draw()
+        elif gesture == "up":
+            return values[index], True
+        elif gesture == "down":
+            apply_rotation(lcd, touch, original)
+            return original, False
+
+
 def restore_confirmation_lines(selected):
     return [
         ["Restore defaults?", None, 35, 2, "white"],
@@ -209,10 +261,31 @@ def _run_settings(touch, lcd, user_params, user_file):
             else:
                 apply_brightness(lcd, previous)
 
+        elif action == "rotation":
+            previous = user_params["DISPLAY_ROTATION_DEG"]
+            selected, should_save = select_rotation(touch, lcd, previous)
+            if not should_save:
+                continue
+            updated, saved = persist_setting(
+                user_file,
+                user_params,
+                "DISPLAY_ROTATION_DEG",
+                selected,
+            )
+            if saved:
+                user_params = updated
+            else:
+                apply_rotation(lcd, touch, previous)
+
         elif action == "restore" and confirm_restore_defaults(touch, lcd):
             defaults, saved = restore_user_defaults(user_file)
             if saved:
                 apply_brightness(lcd, defaults["BRIGHTNESS_PERCENT"])
+                apply_rotation(
+                    lcd,
+                    touch,
+                    defaults["DISPLAY_ROTATION_DEG"],
+                )
                 return defaults, True
 
 

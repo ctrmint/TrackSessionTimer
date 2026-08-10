@@ -4,6 +4,7 @@ from machine import I2C, Pin, Timer
 import time
 
 from hardware import PeripheralIOError, PeripheralIdentityError
+from orientation import map_gesture_direction, validate_rotation
 
 #Guesture Hex values
 G_UP = 0x01
@@ -38,10 +39,12 @@ class Touch_CST816T(object):
         pin_factory=Pin,
         timer_factory=Timer,
         clock=time,
+        rotation=0,
     ):
         self._address = address #Set slave address 
         self._clock = clock
         self._configured_mode = None
+        self.Set_Rotation(rotation)
         try:
             self._bus = bus
             if self._bus is None:
@@ -166,6 +169,19 @@ class Touch_CST816T(object):
         """Discard input that completed a hold before opening another screen."""
         self.Gestures = 0
         self.Flag = 0
+
+    def Set_Rotation(self, rotation):
+        """Keep directional gestures intuitive at the selected mount angle."""
+        self.rotation = validate_rotation(rotation)
+
+    def _gesture_name(self, gesture):
+        direction = {
+            G_UP: "up",
+            G_DOWN: "down",
+            G_LEFT: "left",
+            G_RIGHT: "right",
+        }.get(gesture)
+        return map_gesture_direction(direction, self.rotation)
         
     def Int_Callback(self,pin):
         if self.Mode == 0 :
@@ -307,7 +323,10 @@ class Touch_CST816T(object):
         """
         Check for up gesture.
         """
-        if self.Gestures == G_UP or self.Gestures == G_DOUBLE_CLIC:
+        if (
+            self._gesture_name(self.Gestures) == "up"
+            or self.Gestures == G_DOUBLE_CLIC
+        ):
             self.Gestures = 0
             return True  # up gesture, returns True
         else:
@@ -328,18 +347,7 @@ class Touch_CST816T(object):
         return_type = None     
         self.Set_Mode(0)
          
-        if self.Gestures == G_UP:
-            return_type = "up"
-            
-        
-        if self.Gestures == G_DOWN:
-            return_type = "down"
-            
-        if self.Gestures == G_LEFT:
-            return_type = "left"
-        
-        if self.Gestures == G_RIGHT:
-            return_type = "right"
+        return_type = self._gesture_name(self.Gestures)
             
         self.Gestures = 0  # clear for next gesture, very important
         time.sleep(debounce_time)
@@ -364,15 +372,16 @@ class Touch_CST816T(object):
 
         while got_input is False:
             
-            if self.Gestures == G_UP:
+            gesture = self._gesture_name(self.Gestures)
+            if gesture == "up":
                 got_input = True
                 return_type = "up"
             
-            if self.Gestures == G_DOWN:
+            if gesture == "down":
                 got_input = True
                 return_type = "down"
             
-            if self.Gestures == G_LEFT:
+            if gesture == "left":
                 index_value += 1
                 if index_value == len(duration_values):
                     index_value = 0 

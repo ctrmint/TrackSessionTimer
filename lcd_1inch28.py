@@ -25,6 +25,7 @@ class LCD_1inch28(framebuf.FrameBuffer):
     def __init__(self): #SPI initialization  SPI
         self.width = 240
         self.height = 240
+        self.rotation = 0
         
         self.cs = Pin(CS,Pin.OUT)
         self.rst = Pin(RST,Pin.OUT)
@@ -85,6 +86,20 @@ class LCD_1inch28(framebuf.FrameBuffer):
         
     def set_bl_pwm(self,duty): #Set screen brightness
         self.pwm.duty_u16(duty)#max 65535
+
+    def set_rotation(self, rotation):
+        """Counter-rotate output for the selected clockwise mount angle."""
+        # Import after framebuffer construction to protect the RP2040's largest
+        # contiguous allocation during startup.
+        from orientation import madctl_for_rotation
+
+        value = madctl_for_rotation(rotation)
+        # MADCTL changes are ignored while tearing output is active on GC9A01.
+        self.write_cmd(0x34)
+        self.write_cmd(0x36)
+        self.write_data(value)
+        self.write_cmd(0x35)
+        self.rotation = rotation
         
     def init_display(self): #LCD initialization  LCD
         """Initialize display"""  
