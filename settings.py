@@ -14,7 +14,8 @@ DEFAULT_SYSTEM_PARAMS = {
     "LAUNCH_SENSE_VALUES": [0, 0.5, 1, 1.25, 1.5, 1.75, 2, 2.5, 3.5, 4],
     "VERSION": "3.5",
     "DISPLAY_DELAY_REST_COLOUR": "blue",
-    "BOOT_DELAY_SEC": 2,
+    "STARTUP_SPLASH_DURATION_SEC": 2,
+    "HARDWARE_SPLASH_DURATION_SEC": 2,
 }
 
 DEFAULT_USER_PARAMS = {
@@ -78,23 +79,36 @@ def validate_system_params(data):
     if not isinstance(data, dict):
         return _copy_params(DEFAULT_SYSTEM_PARAMS), False
 
+    source = dict(data)
+    if (
+        "STARTUP_SPLASH_DURATION_SEC" not in source
+        and "BOOT_DELAY_SEC" in source
+    ):
+        source["STARTUP_SPLASH_DURATION_SEC"] = source["BOOT_DELAY_SEC"]
+    if "HARDWARE_SPLASH_DURATION_SEC" not in source:
+        source["HARDWARE_SPLASH_DURATION_SEC"] = DEFAULT_SYSTEM_PARAMS[
+            "HARDWARE_SPLASH_DURATION_SEC"
+        ]
+
     valid = (
-        _positive_int_list(data.get("DURATION_VALUES"))
-        and _non_negative_number_list(data.get("LAUNCH_SENSE_VALUES"))
-        and _is_number(data.get("DISPLAY_DELAY_REST"))
-        and data.get("DISPLAY_DELAY_REST") >= 0
-        and _is_number(data.get("BOOT_DELAY_SEC"))
-        and data.get("BOOT_DELAY_SEC") >= 0
-        and isinstance(data.get("VERSION"), str)
-        and len(data.get("VERSION")) > 0
-        and data.get("DISPLAY_DELAY_REST_COLOUR") in DISPLAY_COLOURS
+        _positive_int_list(source.get("DURATION_VALUES"))
+        and _non_negative_number_list(source.get("LAUNCH_SENSE_VALUES"))
+        and _is_number(source.get("DISPLAY_DELAY_REST"))
+        and source.get("DISPLAY_DELAY_REST") >= 0
+        and _is_number(source.get("STARTUP_SPLASH_DURATION_SEC"))
+        and source.get("STARTUP_SPLASH_DURATION_SEC") >= 0
+        and _is_number(source.get("HARDWARE_SPLASH_DURATION_SEC"))
+        and source.get("HARDWARE_SPLASH_DURATION_SEC") >= 0
+        and isinstance(source.get("VERSION"), str)
+        and len(source.get("VERSION")) > 0
+        and source.get("DISPLAY_DELAY_REST_COLOUR") in DISPLAY_COLOURS
     )
     if not valid:
         return _copy_params(DEFAULT_SYSTEM_PARAMS), False
 
     params = {}
     for key in DEFAULT_SYSTEM_PARAMS:
-        value = data[key]
+        value = source[key]
         params[key] = list(value) if isinstance(value, list) else value
     return params, True
 
