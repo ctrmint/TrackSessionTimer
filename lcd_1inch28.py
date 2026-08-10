@@ -398,3 +398,14 @@ class LCD_1inch28(framebuf.FrameBuffer):
     def write_centered(self, text, y, size, color):
         """Draw smooth proportional text centered on the display."""
         return self._draw_centered(self, text, y, size, color)
+
+    def write_time_centered(self, text, y, size, color):
+        """Draw a centered time using fixed-width digit cells."""
+        return self._draw_centered(
+            self,
+            text,
+            y,
+            size,
+            color,
+            tabular_digits=True,
+        )

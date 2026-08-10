@@ -41,10 +41,29 @@ def _glyph_index(character):
     return code_point - FIRST_CODE_POINT
 
 
-def measure_text(text, size):
-    """Measure proportional text width without loading glyph pixels."""
+def _digit_cell_width(widths):
+    return max(widths[_glyph_index(str(digit))] for digit in range(10))
+
+
+def _character_advance(character, widths, tabular_digits, digit_cell_width):
+    if tabular_digits and "0" <= character <= "9":
+        return digit_cell_width
+    return widths[_glyph_index(character)]
+
+
+def measure_text(text, size, tabular_digits=False):
+    """Measure text width without loading glyph pixels."""
     widths = WIDTHS[_size_index(size)]
-    return sum(widths[_glyph_index(character)] for character in str(text))
+    digit_cell_width = _digit_cell_width(widths) if tabular_digits else None
+    return sum(
+        _character_advance(
+            character,
+            widths,
+            tabular_digits,
+            digit_cell_width,
+        )
+        for character in str(text)
+    )
 
 
 def _glyph_offset(offsets, index):
@@ -91,13 +110,14 @@ def _blit_glyph(
     surface.blit(glyph, x, y, transparent_key, palette)
 
 
-def draw_text(surface, text, x, y, size, color):
+def draw_text(surface, text, x, y, size, color, tabular_digits=False):
     """Draw a pre-rasterized native-resolution font and return its width."""
     size_index = _size_index(size)
     height = PIXEL_HEIGHTS[size_index]
     widths = WIDTHS[size_index]
     offsets = OFFSETS[size_index]
     cursor = int(x)
+    digit_cell_width = _digit_cell_width(widths) if tabular_digits else None
     use_blitter = framebuf is not None and hasattr(surface, "blit")
 
     palette = None
@@ -117,6 +137,13 @@ def draw_text(surface, text, x, y, size, color):
         for character in str(text):
             index = _glyph_index(character)
             width = widths[index]
+            advance = _character_advance(
+                character,
+                widths,
+                tabular_digits,
+                digit_cell_width,
+            )
+            glyph_x = cursor + ((advance - width) // 2)
             glyph_size = ((width + 7) // 8) * height
             bitmap_file.seek(_glyph_offset(offsets, index))
             bitmap = bitmap_file.read(glyph_size)
@@ -129,21 +156,37 @@ def draw_text(surface, text, x, y, size, color):
                     bitmap,
                     width,
                     height,
-                    cursor,
+                    glyph_x,
                     int(y),
                     palette,
                     transparent_key,
                 )
             else:
-                _draw_scanlines(surface, bitmap, width, height, cursor, int(y), color)
-            cursor += width
+                _draw_scanlines(
+                    surface,
+                    bitmap,
+                    width,
+                    height,
+                    glyph_x,
+                    int(y),
+                    color,
+                )
+            cursor += advance
 
     return cursor - int(x)
 
 
-def draw_centered(surface, text, y, size, color):
+def draw_centered(surface, text, y, size, color, tabular_digits=False):
     """Draw text horizontally centered within the framebuffer."""
-    width = measure_text(text, size)
+    width = measure_text(text, size, tabular_digits=tabular_digits)
     x = (surface.width - width) // 2
-    draw_text(surface, text, x, y, size, color)
+    draw_text(
+        surface,
+        text,
+        x,
+        y,
+        size,
+        color,
+        tabular_digits=tabular_digits,
+    )
     return x, width
