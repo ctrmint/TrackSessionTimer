@@ -113,7 +113,7 @@ The second command should identify an RP2040 MicroPython board.
 Run these commands from the repository root. Supporting files and font assets are copied first; `main.py` is installed last as the automatic entry point.
 
 ```sh
-mpremote connect auto fs cp configuration.py font_data.py font_renderer.py hardware.py launch.py lcd_1inch28.py live_display.py params.json qmi8658.py settings.py splash.py timing.py touch_drive.py font_data*.bin startup_splash.rgb565 :
+mpremote connect auto fs cp configuration.py font_data.py font_renderer.py hardware.py launch.py lcd_1inch28.py live_display.py params.json qmi8658.py ready_screen.py settings.py splash.py timing.py touch_drive.py font_data*.bin startup_splash.rgb565 :
 mpremote connect auto fs cp main.py :
 mpremote connect auto reset
 ```

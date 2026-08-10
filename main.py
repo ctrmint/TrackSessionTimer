@@ -20,6 +20,7 @@ from live_display import (
     track_live_frame,
 )
 from qmi8658 import QMI8658
+from ready_screen import ready_screen_lines
 from settings import load_configuration, persist_setting
 from timing import SessionTracker
 from touch_drive import Touch_CST816T
@@ -29,10 +30,6 @@ PARAMS_FILE = "params.json"
 USER_FILE = "user.json"
 
 PIT_SESSION_MSG = ["Cool down!", "Rest in pits"]
-TRACK_SESSION_MSG = ["Ready", "Swipe DOWN to start"]
-CLINE1 = [TRACK_SESSION_MSG[0], None, 90, 5, "white"]
-CLINE2 = [TRACK_SESSION_MSG[1], None, 185, 1, "black"]
-CLINE3 = ["message", None, 35, 3, "black"]
 PLINE1 = [PIT_SESSION_MSG[0], None, 88, 3, "white"]
 PLINE2 = [PIT_SESSION_MSG[1], None, 145, 2, "red"]
 
@@ -102,8 +99,16 @@ def main():
         rest_session = SessionTracker(duration_mins=rest_length, stype="rest", debug=True)
 
         while not launch:
-            CLINE3[0] = str(track_session.duration_mins) + "mins"
-            touch.ControlScreen(lcd, text_array=[CLINE1, CLINE2, CLINE3], back_colour="green")
+            touch.ControlScreen(
+                lcd,
+                text_array=ready_screen_lines(
+                    track_minutes=track_session.duration_mins,
+                    rest_minutes=rest_session.duration_mins,
+                    sensitivity=configured_sensitivity,
+                    imu_available=qmi8658 is not None,
+                ),
+                back_colour="green",
+            )
             gesture = touch.GetGesture(lcd)
 
             if gesture == "left":
