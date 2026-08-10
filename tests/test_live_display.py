@@ -1,6 +1,13 @@
+import math
 import unittest
 
-from live_display import rest_live_frame, run_live_display, track_live_frame
+from font_renderer import measure_text, pixel_height
+from live_display import (
+    COUNTDOWN_TEXT_SIZE,
+    rest_live_frame,
+    run_live_display,
+    track_live_frame,
+)
 from timing import SessionTracker
 
 
@@ -26,6 +33,31 @@ class FakeLCD:
 
 
 class LiveDisplayTests(unittest.TestCase):
+    def test_countdown_uses_nearest_native_size_to_ten_percent_larger(self):
+        previous_height = pixel_height(6)
+        target_height = previous_height * 1.10
+        selected_height = pixel_height(COUNTDOWN_TEXT_SIZE)
+
+        self.assertEqual(7, COUNTDOWN_TEXT_SIZE)
+        self.assertEqual(74, selected_height)
+        self.assertLess(
+            abs(selected_height - target_height),
+            abs(previous_height - target_height),
+        )
+
+    def test_maximum_countdown_width_fits_the_live_screen_position(self):
+        display_radius = 120
+        y_position = 82
+        text_height = pixel_height(COUNTDOWN_TEXT_SIZE)
+        text_width = measure_text("60:00", COUNTDOWN_TEXT_SIZE)
+
+        for edge_y in (y_position, y_position + text_height - 1):
+            distance_from_center = edge_y - display_radius
+            visible_width = 2 * math.sqrt(
+                (display_radius ** 2) - (distance_from_center ** 2)
+            )
+            self.assertLessEqual(text_width, visible_width)
+
     def test_simulated_session_redraws_at_most_once_per_visible_second(self):
         clock = FakeClock()
         lcd = FakeLCD()
@@ -111,11 +143,26 @@ class LiveDisplayTests(unittest.TestCase):
         last_5 = track_live_frame(session, 670, lcd)
         overrun = track_live_frame(session, 700, lcd)
 
+        self.assertTrue(
+            all(
+                frame[2] == COUNTDOWN_TEXT_SIZE
+                for frame in (running, last_15, last_5, overrun)
+            )
+        )
         self.assertEqual((None, None), running[3:])
         self.assertEqual((lcd.salmon, lcd.black), last_15[3:])
         self.assertEqual((lcd.lilac, None), last_5[3:])
         self.assertEqual("00:00", overrun[0])
         self.assertEqual((lcd.red, lcd.black), overrun[3:])
+
+    def test_rest_frame_uses_larger_countdown_size(self):
+        lcd = FakeLCD()
+        session = SessionTracker(duration_mins=10, clock=lambda: 100)
+        session.start_session()
+
+        frame = rest_live_frame(session, 100, lcd)
+
+        self.assertEqual(COUNTDOWN_TEXT_SIZE, frame[2])
 
     def test_loop_delay_must_be_bounded(self):
         session = SessionTracker(duration_mins=1, live=True)

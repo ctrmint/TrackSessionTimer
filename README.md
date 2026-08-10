@@ -39,6 +39,8 @@ The timer utilizes the Waveshare 1.28-inch round touch display, allowing for con
 
 The firmware includes a compact proportional bitmap font rendered directly at the display's native resolution. It replaces enlargement of MicroPython's 8x8 framebuffer font, so large countdown digits and labels retain smooth shapes instead of scaling into square pixels.
 
+The running track and rest countdown uses the 74-pixel native font, the closest available pre-rendered size to a 10% increase from the previous 64-pixel countdown.
+
 `font_data.py` and its flash-backed `font_data*.bin` glyph assets are generated from Montserrat SemiBold. The assets contain pre-rasterized native UI sizes, allowing the Pico to use its fast framebuffer blitter without holding the complete font in RAM. To regenerate them, install Pillow and run:
 
 ```sh
