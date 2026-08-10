@@ -6,6 +6,9 @@ from timing import secs_to_mins_secs
 
 
 LIVE_LOOP_DELAY_SEC = 0.05
+# Native font size 7 is 74 px: the nearest available size to 10% above the
+# previous 64 px countdown (target 70.4 px).
+COUNTDOWN_TEXT_SIZE = 7
 
 
 def _visible_times(session, now):
@@ -21,13 +24,13 @@ def track_live_frame(session, now, lcd):
     """Return all values visible on the track-session screen."""
     remaining, elapsed = _visible_times(session, now)
     if now >= session.end_time:
-        return ("00:00", elapsed, 6, lcd.red, lcd.black)
+        return ("00:00", elapsed, COUNTDOWN_TEXT_SIZE, lcd.red, lcd.black)
 
     if now < session.last_15:
-        return (remaining, elapsed, 6, None, None)
+        return (remaining, elapsed, COUNTDOWN_TEXT_SIZE, None, None)
     if now < session.last_5:
-        return (remaining, elapsed, 6, lcd.salmon, lcd.black)
-    return (remaining, elapsed, 6, lcd.lilac, None)
+        return (remaining, elapsed, COUNTDOWN_TEXT_SIZE, lcd.salmon, lcd.black)
+    return (remaining, elapsed, COUNTDOWN_TEXT_SIZE, lcd.lilac, None)
 
 
 def rest_live_frame(session, now, lcd):
@@ -38,7 +41,7 @@ def rest_live_frame(session, now, lcd):
     return (
         remaining,
         elapsed,
-        6,
+        COUNTDOWN_TEXT_SIZE,
         lcd.blue,
         None,
     )
