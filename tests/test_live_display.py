@@ -72,6 +72,21 @@ class LiveDisplayTests(unittest.TestCase):
             )
             self.assertLessEqual(text_width, visible_width)
 
+    def test_maximum_g_readout_fits_round_screen_safe_area(self):
+        display_radius = 120
+        y_position = 40
+        text_height = pixel_height(2)
+        text_width = measure_text("MAX  99.99  g", 2, tabular_digits=True)
+
+        for edge_y in (y_position, y_position + text_height - 1):
+            distance_from_center = edge_y - display_radius
+            visible_width = 2 * math.sqrt(
+                (display_radius ** 2) - (distance_from_center ** 2)
+            )
+            self.assertLessEqual(text_width, visible_width)
+
+        self.assertLess(y_position + text_height, 82)
+
     def test_simulated_session_redraws_at_most_once_per_visible_second(self):
         clock = FakeClock()
         lcd = FakeLCD()
@@ -146,6 +161,29 @@ class LiveDisplayTests(unittest.TestCase):
         self.assertEqual(2, redraws)
         self.assertEqual("green", frames[0][3])
         self.assertEqual("warning", frames[1][3])
+
+    def test_sampling_runs_between_frames_without_forcing_redraws(self):
+        clock = FakeClock()
+        session = SessionTracker(duration_mins=1, clock=clock.time)
+        session.start_session()
+        samples = []
+
+        def stop_check():
+            return len(samples) == 4
+
+        redraws = run_live_display(
+            session,
+            frame_builder=lambda now: ("same",),
+            draw_frame=lambda frame: None,
+            stop_check=stop_check,
+            sample_update=samples.append,
+            clock=clock,
+        )
+
+        self.assertEqual(1, redraws)
+        self.assertEqual(4, len(samples))
+        for actual, expected in zip(samples, (0, 0.05, 0.1, 0.15)):
+            self.assertAlmostEqual(expected, actual)
 
     def test_rgb_conversion_matches_native_primary_colour_constants(self):
         self.assertEqual(0x00F8, rgb_to_display565((255, 0, 0)))
@@ -228,11 +266,21 @@ class LiveDisplayTests(unittest.TestCase):
         session = SessionTracker(duration_mins=10, clock=lambda: 100)
         session.start_session()
 
-        start = track_live_frame(session, 100, lcd)
+        start = track_live_frame(
+            session,
+            100,
+            lcd,
+            maximum_g="MAX  0.00  g",
+        )
         one_third = track_live_frame(session, 300, lcd)
         two_thirds = track_live_frame(session, 500, lcd)
         near_expiry = track_live_frame(session, 699, lcd)
-        overrun = track_live_frame(session, 700, lcd)
+        overrun = track_live_frame(
+            session,
+            700,
+            lcd,
+            maximum_g="MAX  2.34  g",
+        )
 
         self.assertTrue(
             all(
@@ -248,22 +296,24 @@ class LiveDisplayTests(unittest.TestCase):
         )
         self.assertEqual(
             (rgb_to_display565(TRACK_GREEN_RGB), lcd.black),
-            start[3:],
+            start[3:5],
         )
         self.assertEqual(
             (rgb_to_display565(TRACK_YELLOW_RGB), lcd.black),
-            one_third[3:],
+            one_third[3:5],
         )
         self.assertEqual(
             (rgb_to_display565(TRACK_AMBER_RGB), lcd.black),
-            two_thirds[3:],
+            two_thirds[3:5],
         )
         self.assertNotEqual(two_thirds[3], near_expiry[3])
         self.assertEqual("00:00", overrun[0])
         self.assertEqual(
             (rgb_to_display565(TRACK_OVERRUN_PURPLE_RGB), lcd.white),
-            overrun[3:],
+            overrun[3:5],
         )
+        self.assertEqual("MAX  0.00  g", start[5])
+        self.assertEqual("MAX  2.34  g", overrun[5])
 
     def test_rest_frame_uses_larger_countdown_size(self):
         lcd = FakeLCD()
@@ -273,6 +323,7 @@ class LiveDisplayTests(unittest.TestCase):
         frame = rest_live_frame(session, 100, lcd)
 
         self.assertEqual(COUNTDOWN_TEXT_SIZE, frame[2])
+        self.assertIsNone(frame[5])
 
     def test_loop_delay_must_be_bounded(self):
         session = SessionTracker(duration_mins=1, live=True)

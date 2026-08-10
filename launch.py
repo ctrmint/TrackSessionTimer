@@ -66,6 +66,7 @@ def accel_launch(
     sample_interval_ms=SAMPLE_INTERVAL_MS,
     filter_alpha=FILTER_ALPHA,
     trigger_samples=TRIGGER_SAMPLES,
+    baseline=None,
 ):
     """Wait for a sustained acceleration-vector change and return its outcome.
 
@@ -87,19 +88,22 @@ def accel_launch(
         raise ValueError("filter_alpha must be greater than 0 and at most 1")
 
     started_at = _ticks_ms(clock)
-    baseline = [0.0, 0.0, 0.0]
-    for _ in range(calibration_samples):
-        if _should_exit(cancel_check, clock, started_at, timeout_sec):
-            return False
-        axes = _acceleration(qmi8658.Read_XYZ())
-        baseline[0] += axes[0]
-        baseline[1] += axes[1]
-        baseline[2] += axes[2]
-        _sleep_ms(clock, sample_interval_ms)
+    if baseline is None:
+        baseline = [0.0, 0.0, 0.0]
+        for _ in range(calibration_samples):
+            if _should_exit(cancel_check, clock, started_at, timeout_sec):
+                return False
+            axes = _acceleration(qmi8658.Read_XYZ())
+            baseline[0] += axes[0]
+            baseline[1] += axes[1]
+            baseline[2] += axes[2]
+            _sleep_ms(clock, sample_interval_ms)
 
-    baseline[0] /= calibration_samples
-    baseline[1] /= calibration_samples
-    baseline[2] /= calibration_samples
+        baseline[0] /= calibration_samples
+        baseline[1] /= calibration_samples
+        baseline[2] /= calibration_samples
+    else:
+        baseline = _acceleration(baseline)
 
     filtered = [0.0, 0.0, 0.0]
     consecutive = 0
