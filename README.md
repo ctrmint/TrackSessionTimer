@@ -1,9 +1,18 @@
-# Track Session Timer - v3.3
+# Track Session Timer - v3.5
 Trackday or race session timer.
 
 # Change log
 ## Version 3.0
-### v3.3 [current]
+### v3.5 [current]
+* Added the Caterham startup splash with a safe text fallback.
+* Made Launch Mode orientation-independent, filtered, cancellable, and timeout-safe.
+* Added controlled touch/IMU failure handling and normal-timer degraded operation.
+* Reduced live-display transfers to visible changes while retaining responsive input polling.
+* Added configuration prompts and a complete Ready-screen settings summary.
+* Increased the countdown font and added fixed-width timer digits to prevent movement.
+* Added a Ready-screen battery gauge with an external-power lightning indicator.
+* Expanded hardware-independent regression coverage to 82 tests.
+### v3.3
 * Smooth proportional font rendering at native display resolution.
 * Centered typography and improved layout across timer, configuration, and diagnostic screens.
 * Hardware-verified framebuffer rendering, touchscreen startup, and QMI8658 initialization on the supported Waveshare board.
@@ -68,7 +77,7 @@ python tools/convert_splash.py assets/startup_splash.gif startup_splash.rgb565 \
 
 ## Supported hardware
 
-Version 3.3 supports the integrated [Waveshare RP2040-Touch-LCD-1.28](https://www.waveshare.com/product/rp2040-touch-lcd-1.28.htm). This board combines the RP2040, GC9A01A 240x240 LCD, CST816S touchscreen, and QMI8658 IMU used by the firmware. The standalone 1.28-inch Touch LCD connected to a separate Raspberry Pi Pico uses a different pin map and is not currently supported.
+Version 3.5 supports the integrated [Waveshare RP2040-Touch-LCD-1.28](https://www.waveshare.com/product/rp2040-touch-lcd-1.28.htm). This board combines the RP2040, GC9A01A 240x240 LCD, CST816S touchscreen, and QMI8658 IMU used by the firmware. The standalone 1.28-inch Touch LCD connected to a separate Raspberry Pi Pico uses a different pin map and is not currently supported.
 
 ### Onboard pin map
 
@@ -148,7 +157,7 @@ When upgrading an existing device, omit that command so its saved track duration
 
 ### 4. Verify first boot
 
-The display should show the Caterham v3.3 splash and then the green **Ready** screen. The serial console should report the loaded user parameters, `Success:Detected CST816T.`, and the touchscreen revision without a traceback.
+The display should show the Caterham v3.5 splash and then the green **Ready** screen. The serial console should report the loaded user parameters, `Success:Detected CST816T.`, and the touchscreen revision without a traceback.
 
 If first boot fails:
 
@@ -184,4 +193,4 @@ Run the hardware-independent regression suite with:
 python -m unittest discover -s tests -v
 ```
 
-The suite uses fakes for time, touch gestures, display calls, filesystem operations, and accelerometer samples. Version 3.3 was additionally validated on the supported Waveshare board for boot, LCD/font rendering, CST816S touchscreen detection, QMI8658 initialization, saved settings, and launch behavior.
+The suite uses fakes for time, touch gestures, display calls, filesystem operations, accelerometer samples, battery readings, and USB power state. Version 3.5 was additionally validated on the supported Waveshare board for boot, LCD/font rendering, CST816S touchscreen detection, QMI8658 initialization, saved settings, launch behavior, and the Ready-screen battery indicator.

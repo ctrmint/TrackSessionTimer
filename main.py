@@ -1,6 +1,6 @@
 # Mark Rodman
 # Session Timer for track days and racing.
-# V3.3
+# V3.5
 
 import time
 
