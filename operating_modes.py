@@ -1,5 +1,6 @@
 """On-device operating-mode and settings menus."""
 
+from auto_rotation import AUTO_ROTATION
 from settings import (
     BRIGHTNESS_VALUES,
     DEFAULT_USER_PARAMS,
@@ -155,24 +156,42 @@ def select_brightness(touch, lcd, current):
             return original, False
 
 
-def apply_rotation(lcd, touch, degrees):
+def apply_rotation(lcd, touch, degrees, auto_rotation=None):
     """Apply one mount angle to rendering and directional gestures."""
+    if degrees == AUTO_ROTATION:
+        if auto_rotation is not None:
+            auto_rotation.enable()
+            auto_rotation.update(force=True, redraw=False)
+        return
+    if auto_rotation is not None:
+        auto_rotation.disable(current_rotation=degrees)
     lcd.set_rotation(degrees)
     touch.Set_Rotation(degrees)
 
 
-def rotation_lines(degrees):
+def rotation_lines(value, auto_rotation=None):
+    if value == AUTO_ROTATION:
+        status = (
+            auto_rotation.status_text()
+            if auto_rotation is not None
+            else "IMU unavailable"
+        )
+        label = "AUTO"
+        detail = status
+    else:
+        label = "{} deg".format(value)
+        detail = "Device clockwise"
     return [
         ["Mount rotation", None, 35, 2, "white"],
-        ["{} deg".format(degrees), None, 88, 4, "white"],
-        ["Device clockwise", None, 150, 1, "white"],
+        [label, None, 88, 4, "white"],
+        [detail, None, 150, 1, "white"],
         ["L/R: rotate", None, 180, 1, "white"],
         ["UP: save", None, 202, 1, "white"],
         ["DOWN: cancel", None, 220, 1, "white"],
     ]
 
 
-def select_rotation(touch, lcd, current):
+def select_rotation(touch, lcd, current, auto_rotation=None):
     """Preview mount rotations and return ``(value, should_save)``."""
     values = list(DISPLAY_ROTATION_VALUES)
     try:
@@ -180,18 +199,36 @@ def select_rotation(touch, lcd, current):
     except ValueError:
         index = values.index(DEFAULT_USER_PARAMS["DISPLAY_ROTATION_DEG"])
     original = values[index]
+    last_auto_state = [None]
+
+    def auto_state():
+        if values[index] != AUTO_ROTATION or auto_rotation is None:
+            return None
+        return (
+            auto_rotation.current_rotation,
+            auto_rotation.available,
+            auto_rotation.detector.reliable,
+        )
 
     def draw():
-        apply_rotation(lcd, touch, values[index])
+        apply_rotation(
+            lcd,
+            touch,
+            values[index],
+            auto_rotation=auto_rotation,
+        )
         touch.ControlScreen(
             lcd,
-            text_array=rotation_lines(values[index]),
+            text_array=rotation_lines(values[index], auto_rotation),
             back_colour="black",
         )
+        last_auto_state[0] = auto_state()
 
     draw()
     while True:
         gesture = touch.GetGesture(lcd)
+        if auto_state() != last_auto_state[0]:
+            draw()
         if gesture == "left":
             index = (index - 1) % len(values)
             draw()
@@ -201,7 +238,12 @@ def select_rotation(touch, lcd, current):
         elif gesture == "up":
             return values[index], True
         elif gesture == "down":
-            apply_rotation(lcd, touch, original)
+            apply_rotation(
+                lcd,
+                touch,
+                original,
+                auto_rotation=auto_rotation,
+            )
             return original, False
 
 
@@ -239,7 +281,13 @@ def confirm_restore_defaults(touch, lcd):
             return False
 
 
-def _run_settings(touch, lcd, user_params, user_file):
+def _run_settings(
+    touch,
+    lcd,
+    user_params,
+    user_file,
+    auto_rotation=None,
+):
     while True:
         action = select_settings_action(touch, lcd)
         if action is None or action == "back":
@@ -263,7 +311,12 @@ def _run_settings(touch, lcd, user_params, user_file):
 
         elif action == "rotation":
             previous = user_params["DISPLAY_ROTATION_DEG"]
-            selected, should_save = select_rotation(touch, lcd, previous)
+            selected, should_save = select_rotation(
+                touch,
+                lcd,
+                previous,
+                auto_rotation=auto_rotation,
+            )
             if not should_save:
                 continue
             updated, saved = persist_setting(
@@ -275,7 +328,12 @@ def _run_settings(touch, lcd, user_params, user_file):
             if saved:
                 user_params = updated
             else:
-                apply_rotation(lcd, touch, previous)
+                apply_rotation(
+                    lcd,
+                    touch,
+                    previous,
+                    auto_rotation=auto_rotation,
+                )
 
         elif action == "restore" and confirm_restore_defaults(touch, lcd):
             defaults, saved = restore_user_defaults(user_file)
@@ -285,11 +343,18 @@ def _run_settings(touch, lcd, user_params, user_file):
                     lcd,
                     touch,
                     defaults["DISPLAY_ROTATION_DEG"],
+                    auto_rotation=auto_rotation,
                 )
                 return defaults, True
 
 
-def configure_operating_mode(touch, lcd, user_params, user_file):
+def configure_operating_mode(
+    touch,
+    lcd,
+    user_params,
+    user_file,
+    auto_rotation=None,
+):
     """Run mode/settings UI and return ``(params, selected_mode)``."""
     previous_mode = user_params["OPERATING_MODE"]
     while True:
@@ -303,6 +368,7 @@ def configure_operating_mode(touch, lcd, user_params, user_file):
                 lcd,
                 user_params,
                 user_file,
+                auto_rotation=auto_rotation,
             )
             if restored:
                 return user_params, MODE_TIMER

@@ -44,9 +44,13 @@ The graph removes the stationary gravity/mounting baseline and does not rely on 
 Choose ``Settings`` from the operating-mode menu.
 
 * ``Brightness`` offers 25%, 50%, 75%, and 100%. Left/right previews each level immediately, ``Swipe UP`` saves, and ``Swipe DOWN`` cancels and restores the previous level.
-* ``Rotation`` supports mounting the device at 0°, 90°, 180°, or 270°. The value is the physical device rotation clockwise from its original 0° position. Left/right previews the orientation immediately; the text and directional gestures rotate together, so swipes stay relative to the displayed instructions. ``Swipe UP`` saves, while ``Swipe DOWN`` safely restores the previous orientation.
+* ``Rotation`` offers ``Auto`` followed by fixed 0°, 90°, 180°, and 270° choices. Fixed values are the physical device rotation clockwise from its original 0° position. ``Auto`` uses the QMI8658 gravity reading to keep the screen upright and shows the currently detected angle during preview. Left/right previews immediately; text and directional gestures rotate together, so swipes stay relative to the displayed instructions. ``Swipe UP`` saves, while ``Swipe DOWN`` safely restores the previous orientation.
 * ``Restore defaults`` requires an explicit confirmation. Confirming restores Timer Mode, 100% brightness, 0° rotation, 20-minute track and rest sessions, and disabled Launch Mode. Cancelling changes nothing.
 * Choose ``Back`` or swipe down to return to the operating-mode menu, then select or cancel back to an operating mode.
+
+Auto rotation continues through Ready, configuration, active track/rest timing, Launch Mode, G Mode, menus, and timed information screens. A turn must remain clear and stable for about 0.3 seconds before the display changes, which prevents flicker from road vibration or positions near a diagonal. Changing orientation does not reset or pause a session, and detected angles are not written repeatedly to flash.
+
+When the display is nearly horizontal, gravity points mostly through the screen and cannot identify which edge is physically upward. Auto therefore keeps the last reliable orientation until the display is upright enough again. If the IMU is unavailable, the preview reports ``IMU unavailable`` and Auto retains a safe fixed angle; Timer Mode and all four manual rotation choices continue to work.
 
 ### Session Duration
 It is possible to change the duration of both the ``Track Session`` and the ``Rest in Pits``.

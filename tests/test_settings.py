@@ -211,8 +211,8 @@ class SettingsTests(unittest.TestCase):
         self.assertEqual("timer", normalized["OPERATING_MODE"])
         self.assertEqual(100, normalized["BRIGHTNESS_PERCENT"])
 
-    def test_rotation_accepts_four_angles_and_rejects_other_values(self):
-        for rotation in (0, 90, 180, 270):
+    def test_rotation_accepts_auto_and_four_angles(self):
+        for rotation in (0, 90, 180, 270, "auto"):
             with self.subTest(rotation=rotation):
                 user = dict(DEFAULT_USER_PARAMS)
                 user["DISPLAY_ROTATION_DEG"] = rotation
@@ -223,7 +223,7 @@ class SettingsTests(unittest.TestCase):
                 self.assertFalse(changed)
                 self.assertEqual(rotation, normalized["DISPLAY_ROTATION_DEG"])
 
-        for invalid in (True, 45, 360, "90"):
+        for invalid in (True, 45, 360, "90", "automatic"):
             with self.subTest(invalid=invalid):
                 user = dict(DEFAULT_USER_PARAMS)
                 user["DISPLAY_ROTATION_DEG"] = invalid

@@ -86,12 +86,14 @@ qmi8658, touch_drive = import_drivers()
 
 
 class PeripheralDriverTests(unittest.TestCase):
-    def make_touch(self, bus):
+    def make_touch(self, bus, clock=None):
+        if clock is None:
+            clock = FakeClock()
         return touch_drive.Touch_CST816T(
             bus=bus,
             pin_factory=FakePin,
             timer_factory=FakeTimer,
-            clock=FakeClock(),
+            clock=clock,
         )
 
     def test_qmi_wrong_chip_id_is_incompatible_hardware(self):
@@ -124,6 +126,29 @@ class PeripheralDriverTests(unittest.TestCase):
 
         self.assertEqual(0, touch.Gestures)
         self.assertEqual(0, touch.Flag)
+
+    def test_timed_screens_continue_auto_rotation_polling(self):
+        class FakeAutoRotation:
+            def __init__(self):
+                self.calls = []
+
+            def update(self, redraw=True):
+                self.calls.append(redraw)
+                return False
+
+        clock = FakeClock()
+        touch = self.make_touch(
+            FakeBus({0xA7: 0xB5, 0xA9: 1}),
+            clock=clock,
+        )
+        clock.sleeps = []
+        auto_rotation = FakeAutoRotation()
+        touch.Set_Auto_Rotation(auto_rotation)
+
+        touch.Wait(object(), 0.25, poll_interval_ms=100)
+
+        self.assertEqual([True, True, True], auto_rotation.calls)
+        self.assertEqual([100, 100, 50], clock.sleeps)
 
     def test_absent_qmi_is_a_retryable_io_failure(self):
         with self.assertRaises(PeripheralIOError) as raised:

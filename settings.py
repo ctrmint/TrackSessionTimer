@@ -30,7 +30,7 @@ DEFAULT_USER_PARAMS = {
 
 OPERATING_MODES = ("timer", "g")
 BRIGHTNESS_VALUES = (25, 50, 75, 100)
-DISPLAY_ROTATION_VALUES = (0, 90, 180, 270)
+DISPLAY_ROTATION_VALUES = (0, 90, 180, 270, "auto")
 
 LEGACY_USER_KEYS = {
     "TRACK_LENGTH": "RACE_LENGTH",
@@ -190,8 +190,7 @@ def normalize_user_params(data, system_params=None):
     ):
         brightness_percent = DEFAULT_USER_PARAMS["BRIGHTNESS_PERCENT"]
     if (
-        not isinstance(display_rotation, int)
-        or isinstance(display_rotation, bool)
+        isinstance(display_rotation, bool)
         or display_rotation not in DISPLAY_ROTATION_VALUES
     ):
         display_rotation = DEFAULT_USER_PARAMS["DISPLAY_ROTATION_DEG"]
