@@ -13,6 +13,7 @@ from settings import (
     load_configuration,
     normalize_user_params,
     persist_setting,
+    restore_user_defaults,
     update_json,
     validate_system_params,
 )
@@ -105,6 +106,12 @@ class SettingsTests(unittest.TestCase):
         self.assertFalse(valid)
         self.assertEqual(DEFAULT_SYSTEM_PARAMS, params)
 
+        invalid_hold = dict(DEFAULT_SYSTEM_PARAMS)
+        invalid_hold["MODE_MENU_HOLD_SEC"] = 0
+        params, valid = validate_system_params(invalid_hold)
+        self.assertFalse(valid)
+        self.assertEqual(DEFAULT_SYSTEM_PARAMS, params)
+
         for duration_key in (
             "STARTUP_SPLASH_DURATION_SEC",
             "HARDWARE_SPLASH_DURATION_SEC",
@@ -119,6 +126,15 @@ class SettingsTests(unittest.TestCase):
     def test_splash_durations_default_to_two_seconds(self):
         self.assertEqual(2, DEFAULT_SYSTEM_PARAMS["STARTUP_SPLASH_DURATION_SEC"])
         self.assertEqual(2, DEFAULT_SYSTEM_PARAMS["HARDWARE_SPLASH_DURATION_SEC"])
+
+    def test_existing_system_file_gains_default_mode_hold_duration(self):
+        legacy = dict(DEFAULT_SYSTEM_PARAMS)
+        del legacy["MODE_MENU_HOLD_SEC"]
+
+        params, valid = validate_system_params(legacy)
+
+        self.assertTrue(valid)
+        self.assertEqual(5, params["MODE_MENU_HOLD_SEC"])
 
     def test_legacy_boot_delay_is_migrated(self):
         legacy = dict(DEFAULT_SYSTEM_PARAMS)
@@ -159,9 +175,53 @@ class SettingsTests(unittest.TestCase):
         )
         self.assertTrue(changed)
         self.assertEqual(
-            {"SENSITIVITY": 0.5, "RACE_LENGTH": 10, "REST_LENGTH": 15},
+            {
+                "SENSITIVITY": 0.5,
+                "RACE_LENGTH": 10,
+                "REST_LENGTH": 15,
+                "OPERATING_MODE": "timer",
+                "BRIGHTNESS_PERCENT": 100,
+            },
             normalized,
         )
+
+    def test_existing_user_file_gains_mode_and_brightness_defaults(self):
+        normalized, changed = normalize_user_params(
+            {"SENSITIVITY": 0, "RACE_LENGTH": 10, "REST_LENGTH": 15},
+            DEFAULT_SYSTEM_PARAMS,
+        )
+
+        self.assertTrue(changed)
+        self.assertEqual("timer", normalized["OPERATING_MODE"])
+        self.assertEqual(100, normalized["BRIGHTNESS_PERCENT"])
+
+    def test_invalid_mode_and_brightness_use_defaults(self):
+        invalid = dict(DEFAULT_USER_PARAMS)
+        invalid["OPERATING_MODE"] = "unsupported"
+        invalid["BRIGHTNESS_PERCENT"] = 42
+
+        normalized, changed = normalize_user_params(
+            invalid,
+            DEFAULT_SYSTEM_PARAMS,
+        )
+
+        self.assertTrue(changed)
+        self.assertEqual("timer", normalized["OPERATING_MODE"])
+        self.assertEqual(100, normalized["BRIGHTNESS_PERCENT"])
+
+    def test_restore_user_defaults_replaces_complete_file(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = os.path.join(directory, "user.json")
+            changed = dict(DEFAULT_USER_PARAMS)
+            changed["OPERATING_MODE"] = "g"
+            changed["BRIGHTNESS_PERCENT"] = 25
+            self.assertTrue(file_out(path, changed, debug=False))
+
+            defaults, saved = restore_user_defaults(path, debug=False)
+
+            self.assertTrue(saved)
+            self.assertEqual(DEFAULT_USER_PARAMS, defaults)
+            self.assertEqual(DEFAULT_USER_PARAMS, file_in(path, debug=False))
 
     def test_documented_configuration_loads_and_round_trips(self):
         with tempfile.TemporaryDirectory() as directory:

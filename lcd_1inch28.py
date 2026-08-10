@@ -1,5 +1,5 @@
 #LCD_1inch28
-#Version 3.5
+#Version 4.0.0
 from machine import Pin,I2C,SPI,PWM,Timer,ADC
 import framebuf
 import time

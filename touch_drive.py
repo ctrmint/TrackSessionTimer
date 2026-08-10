@@ -1,5 +1,5 @@
 # Touch drive
-# v3.5
+# v4.0.0
 from machine import I2C, Pin, Timer
 import time
 
@@ -157,6 +157,15 @@ class Touch_CST816T(object):
         
         self.X_point=x_point
         self.Y_point=y_point
+
+    def IsPressed(self):
+        """Return whether the controller currently reports a physical touch."""
+        return bool(self._read_byte(0x02) & 0x0F)
+
+    def ClearPendingInput(self):
+        """Discard input that completed a hold before opening another screen."""
+        self.Gestures = 0
+        self.Flag = 0
         
     def Int_Callback(self,pin):
         if self.Mode == 0 :

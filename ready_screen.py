@@ -34,14 +34,21 @@ def ready_screen_lines(
     rest_minutes,
     sensitivity,
     imu_available,
+    mode_hold_seconds=5,
 ):
     """Build the complete Ready screen text layout."""
+    hold_value = float(mode_hold_seconds)
+    if hold_value == int(hold_value):
+        hold_label = str(int(hold_value))
+    else:
+        hold_label = str(hold_value)
     return [
         ["Ready", None, READY_TITLE_Y, 4, "white"],
         ["Track {}m".format(track_minutes), None, 100, 2, "black"],
         ["Rest {}m".format(rest_minutes), None, 130, 2, "black"],
         [launch_status(sensitivity, imu_available), None, 160, 2, "black"],
-        ["Swipe DOWN to start", None, 205, 1, "black"],
+        ["Swipe DOWN to start", None, 198, 1, "black"],
+        ["Hold {}s: modes".format(hold_label), None, 218, 1, "black"],
     ]
 
 
@@ -113,6 +120,7 @@ def draw_ready_screen(
     sensitivity,
     imu_available,
     battery_status,
+    mode_hold_seconds=5,
 ):
     """Render the Ready text and battery graphic in one framebuffer update."""
     touch.ControlScreen(
@@ -122,6 +130,7 @@ def draw_ready_screen(
             rest_minutes,
             sensitivity,
             imu_available,
+            mode_hold_seconds,
         ),
         back_colour="green",
         refresh=False,

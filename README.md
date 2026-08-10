@@ -1,9 +1,15 @@
-# Track Session Timer - v3.5
+# Track Session Timer - v4.0.0
 Trackday or race session timer.
 
 # Change log
+## Version 4.0
+### v4.0.0 [current]
+* Added a hold-to-open operating-mode menu with persistent Timer and G modes.
+* Added a responsive graphical live/peak G meter with a high-visibility peak arc.
+* Added saved display-brightness control and confirmed restoration of defaults.
+* Expanded hardware-independent regression coverage to 116 tests.
 ## Version 3.0
-### v3.5 [current]
+### v3.5
 * Added the Caterham startup splash with a safe text fallback.
 * Made Launch Mode orientation-independent, filtered, cancellable, and timeout-safe.
 * Added controlled touch/IMU failure handling and normal-timer degraded operation.
@@ -77,9 +83,19 @@ python tools/convert_splash.py assets/startup_splash.gif startup_splash.rgb565 \
   --preview assets/startup_splash_preview.png
 ```
 
+## Operating modes and settings
+
+Press and continuously hold the touchscreen for five seconds from the Timer Ready screen or G Mode to open the operating-mode menu. Releasing early cancels the hold. For safety, the menu cannot interrupt a running track/rest session or the Launch Mode wait. In menus, swipe left/right to choose, swipe up to select, and swipe down to cancel. The selected operating mode persists across restarts.
+
+* **Timer Mode** retains the existing track, rest, and Launch Mode workflow.
+* **G Mode** calibrates the stationary QMI8658 baseline, then presents a responsive graphical round G meter rather than numeric telemetry. The green filled marker and short trail show the current filtered acceleration vector at the LCD's display-limited refresh rate. The red hollow marker records the maximum vector, while the red perimeter arc shows peak magnitude relative to the 4 g visual scale. Double-tap resets the trail and peak. Hold for five seconds to return to the mode menu.
+* **Settings** provides 25%, 50%, 75%, and 100% brightness choices with immediate preview. Swipe up saves; swipe down cancels and restores the previous brightness. **Restore defaults** requires confirmation, then restores Timer Mode, 100% brightness, 20-minute track/rest sessions, and disabled Launch Mode.
+
+If the IMU is unavailable in G Mode, the firmware shows an actionable message and safely returns to Timer Mode. The timer remains usable.
+
 ## Supported hardware
 
-Version 3.5 supports the integrated [Waveshare RP2040-Touch-LCD-1.28](https://www.waveshare.com/product/rp2040-touch-lcd-1.28.htm). This board combines the RP2040, GC9A01A 240x240 LCD, CST816S touchscreen, and QMI8658 IMU used by the firmware. The standalone 1.28-inch Touch LCD connected to a separate Raspberry Pi Pico uses a different pin map and is not currently supported.
+Version 4.0.0 supports the integrated [Waveshare RP2040-Touch-LCD-1.28](https://www.waveshare.com/product/rp2040-touch-lcd-1.28.htm). This board combines the RP2040, GC9A01A 240x240 LCD, CST816S touchscreen, and QMI8658 IMU used by the firmware. The standalone 1.28-inch Touch LCD connected to a separate Raspberry Pi Pico uses a different pin map and is not currently supported.
 
 ### Onboard pin map
 
@@ -144,7 +160,7 @@ The second command should identify an RP2040 MicroPython board.
 Run these commands from the repository root. Supporting files and font assets are copied first; `main.py` is installed last as the automatic entry point.
 
 ```sh
-mpremote connect auto fs cp battery.py configuration.py font_data.py font_renderer.py hardware.py hardware_splash.py launch.py lcd_1inch28.py live_display.py params.json qmi8658.py ready_screen.py settings.py splash.py timing.py touch_drive.py font_data*.bin startup_splash.rgb565 :
+mpremote connect auto fs cp application.py battery.py configuration.py font_data.py font_renderer.py g_meter.py hardware.py hardware_splash.py hold_detector.py launch.py lcd_1inch28.py live_display.py operating_modes.py params.json qmi8658.py ready_screen.py settings.py splash.py timer_mode.py timing.py touch_drive.py font_data*.bin startup_splash.rgb565 :
 mpremote connect auto fs cp main.py :
 mpremote connect auto reset
 ```
@@ -159,7 +175,7 @@ When upgrading an existing device, omit that command so its saved track duration
 
 ### 4. Verify first boot
 
-The display should show the Caterham v3.5 splash, the hardware-information splash, and then the green **Ready** screen. The serial console should report the loaded user parameters, `Success:Detected CST816T.`, and the touchscreen revision without a traceback.
+The display should show the Caterham v4.0.0 splash, the hardware-information splash, and then the green **Ready** screen. The serial console should report the loaded user parameters, `Success:Detected CST816T.`, and the touchscreen revision without a traceback.
 
 If first boot fails:
 
@@ -178,14 +194,14 @@ The QMI8658 IMU is optional unless a non-zero Launch Mode sensitivity is selecte
 
 ## Configuration files
 
-Version 3.5 uses two separate configuration scopes:
+Version 4.0.0 uses two separate configuration scopes:
 
-* `params.json` contains system-owned choices and display behavior: `DURATION_VALUES`, `LAUNCH_SENSE_VALUES`, `VERSION`, `DISPLAY_DELAY_REST`, `DISPLAY_DELAY_REST_COLOUR`, `STARTUP_SPLASH_DURATION_SEC`, and `HARDWARE_SPLASH_DURATION_SEC`.
-* `user.json` contains the current user selections: `RACE_LENGTH` (track-session minutes), `REST_LENGTH` (pit-rest minutes), and `SENSITIVITY` (launch threshold; `0` disables Launch Mode).
+* `params.json` contains system-owned choices and display behavior: `DURATION_VALUES`, `LAUNCH_SENSE_VALUES`, `VERSION`, `DISPLAY_DELAY_REST`, `DISPLAY_DELAY_REST_COLOUR`, `STARTUP_SPLASH_DURATION_SEC`, `HARDWARE_SPLASH_DURATION_SEC`, and `MODE_MENU_HOLD_SEC`.
+* `user.json` contains the current user selections: `RACE_LENGTH` (track-session minutes), `REST_LENGTH` (pit-rest minutes), `SENSITIVITY` (launch threshold; `0` disables Launch Mode), `OPERATING_MODE` (`timer` or `g`), and `BRIGHTNESS_PERCENT`.
 
 Launch sensitivity is the filtered change in acceleration-vector magnitude from a 0.4-second stationary baseline, measured in g. This removes gravity and mounting orientation and handles acceleration on either side of every axis. Lower non-zero values are more sensitive. Detection requires three consecutive samples above the threshold; double-tap cancels the wait, and a 30-second timeout returns to the Ready screen. See `User Guide.md` for the practical meaning of every configured value.
 
-The firmware has built-in system and user defaults. Missing, malformed, or unsupported user values are replaced with safe defaults and saved using the canonical keys above. Existing `TRACK_LENGTH`, `TRACK_SESSION_LENGTH`, and `REST_SESSION_LENGTH` user keys are migrated automatically.
+The firmware has built-in system and user defaults. Missing, malformed, or unsupported user values are replaced with safe defaults and saved using the canonical keys above. Existing `TRACK_LENGTH`, `TRACK_SESSION_LENGTH`, and `REST_SESSION_LENGTH` user keys are migrated automatically, while older files gain Timer Mode and 100% brightness defaults.
 
 ## Host-side tests
 
@@ -195,4 +211,4 @@ Run the hardware-independent regression suite with:
 python -m unittest discover -s tests -v
 ```
 
-The suite uses fakes for time, touch gestures, display calls, filesystem operations, accelerometer samples, battery readings, and USB power state. Version 3.5 was additionally validated on the supported Waveshare board for both startup screens, LCD/font rendering, CST816S touchscreen detection, QMI8658 initialization, saved settings, launch behavior, and the Ready-screen battery indicator.
+The suite uses fakes for time, continuous holds, touch gestures, mode/settings navigation, graphical G vectors, display calls, filesystem operations, accelerometer samples, battery readings, and USB power state. Version 4.0.0 was additionally validated on the supported Waveshare board for both startup screens, Timer and G Mode boots, native G-meter rendering, LCD/font rendering, CST816S touch-state detection, QMI8658 sampling, saved settings, launch behavior, and the Ready-screen battery indicator.

@@ -1,10 +1,10 @@
-# User Guide - v3.5
+# User Guide - v4.0.0
 
 ## General / Sessions Use
 The following describes general operation of both the ``Track Session`` and ``Rest in Pits Session`` timer.
 
 * Upon startup, the Caterham boot artwork is followed by a hardware-information screen showing the board, processor, firmware, operating system, and platform. Each screen is shown for two seconds by default. Maintainers can tune the waits independently with `STARTUP_SPLASH_DURATION_SEC` and `HARDWARE_SPLASH_DURATION_SEC` in `params.json`.
-* The ``Primary Screen`` will then show ``Ready`` together with the saved track duration, rest duration, and effective Launch Mode state. A battery icon above `Ready` fills from left to right with estimated remaining charge. A lightning bolt through the battery means USB/external power is present. When the timer starts while connected to USB, the initial full fill represents powered status because this board cannot read the isolated battery cell until it runs from battery. ``Launch unavailable`` means the saved non-zero sensitivity could not be used because the IMU is unavailable; normal swipe-down timing still works. To start the ``Track Session`` or race, ``Swipe Down``.
+* The ``Primary Screen`` will then show ``Ready`` together with the saved track duration, rest duration, and effective Launch Mode state. A battery icon above `Ready` fills from left to right with estimated remaining charge. A lightning bolt through the battery means USB/external power is present. When the timer starts while connected to USB, the initial full fill represents powered status because this board cannot read the isolated battery cell until it runs from battery. ``Launch unavailable`` means the saved non-zero sensitivity could not be used because the IMU is unavailable; normal swipe-down timing still works. To start the ``Track Session`` or race, ``Swipe Down``. Hold the screen continuously for five seconds to open the operating-mode menu.
 * After swiping down, ``Go`` will display briefly. If ``Launch Mode`` has been activated, ``Lights`` will be displayed while the timer measures a stationary baseline and waits for sufficient acceleration.
 * While waiting in ``Launch Mode``, double-tap to cancel and return to the ``Primary Screen``. The wait also cancels automatically after 30 seconds.
 * Upon starting, the ``Track Session`` timer count down will be displayed, and immediately commence.
@@ -16,7 +16,36 @@ The following describes general operation of both the ``Track Session`` and ``Re
 * Once the ``Rest in Pits Session`` is complete, the timer will return to the ``Primary screen``.  The ``Rest in Pits  Session``  can be terminated with a ``Double Tap``.
 
 ## Configuration / Setup
-Track duration, rest duration, and launch sensitivity are saved to `user.json` when changed. These settings persist across restarts and power loss. If the file is missing, damaged, or contains unsupported values, the timer restores safe defaults and rewrites the file using the canonical v3.2 setting names.
+Track duration, rest duration, launch sensitivity, operating mode, and brightness are saved to `user.json` when changed. These settings persist across restarts and power loss. If the file is missing, damaged, or contains unsupported values, the timer restores safe defaults and rewrites the file using the canonical setting names.
+
+### Operating Mode Menu
+
+From the Timer ``Ready`` screen or G Mode, press and continuously hold the touchscreen for five seconds. Releasing before five seconds cancels entry. The menu is intentionally unavailable during track/rest timing or the Launch Mode wait.
+
+* Swipe ``Left`` or ``Right`` to choose ``Timer Mode``, ``G Mode``, or ``Settings``.
+* Swipe ``UP`` to select the displayed choice.
+* Swipe ``DOWN`` to cancel and return to the previously active mode.
+* Timer Mode and G Mode selections are saved and used on the next restart. Settings returns to the menu rather than becoming an operating mode.
+
+#### G Mode
+
+Keep the device still while ``Calibrating`` is displayed. The screen then becomes a graphical G meter:
+
+* The green filled marker is the current filtered acceleration vector; its short trail shows recent direction of travel.
+* The red hollow marker is the maximum vector since G Mode began or was reset.
+* The red outer arc represents maximum magnitude against the meter's 4 g visual scale.
+* ``Double Tap`` clears the peak and trail.
+* Hold the screen for five seconds to reopen the operating-mode menu.
+
+The graph removes the stationary gravity/mounting baseline and does not rely on small numeric telemetry. If the IMU is unavailable, the timer shows an error and returns safely to Timer Mode.
+
+#### Device Settings
+
+Choose ``Settings`` from the operating-mode menu.
+
+* ``Brightness`` offers 25%, 50%, 75%, and 100%. Left/right previews each level immediately, ``Swipe UP`` saves, and ``Swipe DOWN`` cancels and restores the previous level.
+* ``Restore defaults`` requires an explicit confirmation. Confirming restores Timer Mode, 100% brightness, 20-minute track and rest sessions, and disabled Launch Mode. Cancelling changes nothing.
+* Choose ``Back`` or swipe down to return to the operating-mode menu, then select or cancel back to an operating mode.
 
 ### Session Duration
 It is possible to change the duration of both the ``Track Session`` and the ``Rest in Pits``.
