@@ -4,6 +4,7 @@
 
 import time
 
+from battery import BatteryMonitor
 from configuration import set_sensitivity, set_session
 from hardware import (
     PeripheralError,
@@ -20,7 +21,7 @@ from live_display import (
     track_live_frame,
 )
 from qmi8658 import QMI8658
-from ready_screen import ready_screen_lines
+from ready_screen import draw_ready_screen
 from settings import load_configuration, persist_setting
 from timing import SessionTracker
 from touch_drive import Touch_CST816T
@@ -71,6 +72,7 @@ def main():
     # Display and touchscreen
     lcd = LCD_1inch28()
     lcd.set_bl_pwm(65535)
+    battery_monitor = BatteryMonitor()
     try:
         touch = initialize_with_retry(
             lambda: Touch_CST816T(mode=1, LCD=lcd),
@@ -99,15 +101,14 @@ def main():
         rest_session = SessionTracker(duration_mins=rest_length, stype="rest", debug=True)
 
         while not launch:
-            touch.ControlScreen(
-                lcd,
-                text_array=ready_screen_lines(
-                    track_minutes=track_session.duration_mins,
-                    rest_minutes=rest_session.duration_mins,
-                    sensitivity=configured_sensitivity,
-                    imu_available=qmi8658 is not None,
-                ),
-                back_colour="green",
+            draw_ready_screen(
+                touch=touch,
+                lcd=lcd,
+                track_minutes=track_session.duration_mins,
+                rest_minutes=rest_session.duration_mins,
+                sensitivity=configured_sensitivity,
+                imu_available=qmi8658 is not None,
+                battery_status=battery_monitor.read_status(),
             )
             gesture = touch.GetGesture(lcd)
 

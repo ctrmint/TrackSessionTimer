@@ -233,7 +233,7 @@ class Touch_CST816T(object):
             return LCD.black 
 
 
-    def ControlScreen(self, LCD, text_array=None, back_colour=None):
+    def ControlScreen(self, LCD, text_array=None, back_colour=None, refresh=True):
         """
         Outputs text to screen using an array of arrays, where each inner array contains the following structure:
         [string_val, x, y, size, color].
@@ -242,6 +242,7 @@ class Touch_CST816T(object):
         - LCD: The LCD object responsible for displaying the text.
         - text_array: A list of lists, each containing [string_val, x, y, size, color].
         - back_colour: Optional background color for the screen.
+        - refresh: Show immediately, or allow the caller to add graphics first.
         """      
         # Set the background color if provided
         if back_colour is not None:
@@ -259,8 +260,9 @@ class Touch_CST816T(object):
                     LCD.write_centered(string_val, y, size, text_color)
                 else:
                     LCD.write_text(string_val, x, y, size, text_color)
-        # Refresh the LCD to display the changes
-        LCD.show()
+        # Refresh the LCD unless the caller still needs to add graphics.
+        if refresh:
+            LCD.show()
         
         
     def GoScreen(self, LCD, text='..GO!', subtitle=None):

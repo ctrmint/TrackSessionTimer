@@ -88,6 +88,24 @@ These are fixed internal board connections; no external display wiring is requir
 | Touch reset | GP22 |
 | Battery ADC | GP29 |
 
+## Ready-screen battery indicator
+
+The top of the Ready screen contains a standard horizontal battery gauge. Its
+black fill is an estimated 0–100% state of charge derived from eight averaged
+GP29 readings and the board's 200k/100k `VSYS` divider. A white lightning bolt
+appears through the icon whenever the RP2040 USB controller detects external
+VBUS power. The 35×16-pixel graphic is centered at the top of the round display
+and ends 12 pixels before the `Ready` heading, so it does not obscure the title
+or settings summary.
+
+The gauge is an approximate 3.7 V Li-ion voltage estimate; cell temperature,
+load, age, and chemistry affect accuracy. The board cannot measure isolated
+battery voltage while USB supplies `VSYS`. In that state the bolt is exact, but
+the fill retains the last battery-only estimate from the current boot. If the
+device starts on USB, a full powered-state fill is shown until a battery-only
+measurement becomes available. An unreadable ADC leaves an empty outline rather
+than interrupting timer startup.
+
 ## Installation
 
 The application runs on MicroPython. BOOT mode is used only to flash the MicroPython UF2; application files are transferred afterward through the MicroPython serial connection.
@@ -115,7 +133,7 @@ The second command should identify an RP2040 MicroPython board.
 Run these commands from the repository root. Supporting files and font assets are copied first; `main.py` is installed last as the automatic entry point.
 
 ```sh
-mpremote connect auto fs cp configuration.py font_data.py font_renderer.py hardware.py launch.py lcd_1inch28.py live_display.py params.json qmi8658.py ready_screen.py settings.py splash.py timing.py touch_drive.py font_data*.bin startup_splash.rgb565 :
+mpremote connect auto fs cp battery.py configuration.py font_data.py font_renderer.py hardware.py launch.py lcd_1inch28.py live_display.py params.json qmi8658.py ready_screen.py settings.py splash.py timing.py touch_drive.py font_data*.bin startup_splash.rgb565 :
 mpremote connect auto fs cp main.py :
 mpremote connect auto reset
 ```

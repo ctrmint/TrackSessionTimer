@@ -4,7 +4,7 @@
 The following describes general operation of both the ``Track Session`` and ``Rest in Pits Session`` timer.
 
 * Upon start up a boot splash will be shown for 2 seconds.
-* After which the ``Primary Screen`` will show ``Ready`` together with the saved track duration, rest duration, and effective Launch Mode state. ``Launch unavailable`` means the saved non-zero sensitivity could not be used because the IMU is unavailable; normal swipe-down timing still works. To start the ``Track Session`` or race, ``Swipe Down``.
+* After which the ``Primary Screen`` will show ``Ready`` together with the saved track duration, rest duration, and effective Launch Mode state. A battery icon above `Ready` fills from left to right with estimated remaining charge. A lightning bolt through the battery means USB/external power is present. When the timer starts while connected to USB, the initial full fill represents powered status because this board cannot read the isolated battery cell until it runs from battery. ``Launch unavailable`` means the saved non-zero sensitivity could not be used because the IMU is unavailable; normal swipe-down timing still works. To start the ``Track Session`` or race, ``Swipe Down``.
 * After swiping down, ``Go`` will display briefly. If ``Launch Mode`` has been activated, ``Lights`` will be displayed while the timer measures a stationary baseline and waits for sufficient acceleration.
 * While waiting in ``Launch Mode``, double-tap to cancel and return to the ``Primary Screen``. The wait also cancels automatically after 30 seconds.
 * Upon starting, the ``Track Session`` timer count down will be displayed, and immediately commence.
