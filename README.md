@@ -2,6 +2,10 @@
 Trackday or race session timer.
 
 # Change log
+## Next
+* Replaced abrupt track-session warning backgrounds with a smooth, duration-proportional green, yellow, amber, and red gradient.
+* Added a distinct deep-purple overrun background and automatic black-or-white timer text chosen for maximum contrast.
+
 ## Version 4.1
 ### v4.1.0 [current]
 * Added persistent 0°, 90°, 180°, and 270° clockwise mounting orientations.
@@ -50,7 +54,7 @@ See user guide.
 ## Background
 Managing time on the track can be challenging, whether it's during a track day or a race. Many competitors in the Seven category use kitchen timers mounted on their dashboards. However, these timers can be large, awkward, and difficult to read, requiring drivers to interpret small digits mid-race.
 
-The code provided here offers a solution by creating a timer that is easy to read with clear digits. Additionally, it features background colors that change to indicate key moments during the session, such as when 85% and 95% of the session time has elapsed.
+The code provided here offers a solution by creating a timer that is easy to read with clear digits. The track-session background continuously communicates progress: green at the start, yellow at one-third, amber at two-thirds, and red as scheduled time expires. Overrun is shown in deep purple with white text. Black or white timer text is selected automatically for the strongest contrast against every intermediate colour.
 
 The timer is designed to support common session lengths, making it quick and easy to set up without the need to scroll through unnecessary minute intervals.
 
@@ -72,7 +76,7 @@ The generated font data is distributed under the SIL Open Font License 1.1 in `F
 
 ## Live display refresh
 
-Track and rest sessions poll stop gestures every 50 ms while comparing the complete visible frame (remaining time, elapsed time, font size, background, and text colour) with the previous frame. The 115,200-byte framebuffer is transferred only when a displayed second or warning state changes, normally reducing continuous redraws to one per second. Touch-controller mode changes are also cached, so an unchanged gesture mode does not generate repeated I2C writes.
+Track and rest sessions poll stop gestures every 50 ms while comparing the complete visible frame (remaining time, elapsed time, font size, background, and text colour) with the previous frame. Track colour is interpolated from whole elapsed seconds, making the blend proportional to the selected duration while retaining a maximum of one normal full-screen transfer per displayed second. Touch-controller mode changes are also cached, so an unchanged gesture mode does not generate repeated I2C writes.
 
 On the supported Waveshare board running MicroPython 1.21.0, five full live-screen redraws measured 56.2–65.4 ms. Input is therefore checked within 50 ms between redraws and within approximately 115 ms in the worst case when a gesture arrives immediately before a redraw. Five consecutive frames produced only the two register writes needed for the initial gesture-mode configuration and no rewrites on later frames.
 

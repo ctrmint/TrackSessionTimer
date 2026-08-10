@@ -4,8 +4,17 @@ import unittest
 from font_renderer import measure_text, pixel_height
 from live_display import (
     COUNTDOWN_TEXT_SIZE,
+    TRACK_AMBER_RGB,
+    TRACK_GREEN_RGB,
+    TRACK_OVERRUN_PURPLE_RGB,
+    TRACK_RED_RGB,
+    TRACK_YELLOW_RGB,
+    high_contrast_text_colour,
+    interpolate_rgb,
     rest_live_frame,
+    rgb_to_display565,
     run_live_display,
+    scheduled_track_rgb,
     track_live_frame,
 )
 from timing import SessionTracker
@@ -30,6 +39,7 @@ class FakeLCD:
     salmon = 3
     lilac = 4
     blue = 5
+    white = 6
 
 
 class LiveDisplayTests(unittest.TestCase):
@@ -137,27 +147,123 @@ class LiveDisplayTests(unittest.TestCase):
         self.assertEqual("green", frames[0][3])
         self.assertEqual("warning", frames[1][3])
 
-    def test_track_frames_include_warning_and_overrun_state(self):
+    def test_rgb_conversion_matches_native_primary_colour_constants(self):
+        self.assertEqual(0x00F8, rgb_to_display565((255, 0, 0)))
+        self.assertEqual(0xE007, rgb_to_display565((0, 255, 0)))
+        self.assertEqual(0x1F00, rgb_to_display565((0, 0, 255)))
+        self.assertEqual(0xFFFF, rgb_to_display565((255, 255, 255)))
+
+    def test_scheduled_gradient_has_exact_proportional_anchors(self):
+        duration = 600
+
+        self.assertEqual(TRACK_GREEN_RGB, scheduled_track_rgb(0, duration))
+        self.assertEqual(TRACK_YELLOW_RGB, scheduled_track_rgb(200, duration))
+        self.assertEqual(TRACK_AMBER_RGB, scheduled_track_rgb(400, duration))
+        self.assertEqual(TRACK_RED_RGB, scheduled_track_rgb(600, duration))
+
+    def test_scheduled_gradient_interpolates_between_anchors(self):
+        duration = 600
+
+        green_yellow = scheduled_track_rgb(100, duration)
+        yellow_amber = scheduled_track_rgb(300, duration)
+        amber_red = scheduled_track_rgb(500, duration)
+
+        self.assertEqual((128, 255, 0), green_yellow)
+        self.assertEqual((255, 223, 0), yellow_amber)
+        self.assertEqual((255, 96, 0), amber_red)
+        self.assertNotIn(
+            green_yellow,
+            (TRACK_GREEN_RGB, TRACK_YELLOW_RGB),
+        )
+
+    def test_scheduled_gradient_scales_with_total_duration(self):
+        self.assertEqual(
+            scheduled_track_rgb(30, 60),
+            scheduled_track_rgb(300, 600),
+        )
+
+    def test_scheduled_gradient_clamps_progress_and_rejects_zero_duration(self):
+        self.assertEqual(TRACK_GREEN_RGB, scheduled_track_rgb(-1, 60))
+        self.assertEqual(TRACK_RED_RGB, scheduled_track_rgb(61, 60))
+        with self.assertRaises(ValueError):
+            scheduled_track_rgb(0, 0)
+
+    def test_rgb_interpolation_clamps_to_endpoints(self):
+        self.assertEqual((0, 0, 0), interpolate_rgb((0, 0, 0), (9, 9, 9), -1, 3))
+        self.assertEqual((9, 9, 9), interpolate_rgb((0, 0, 0), (9, 9, 9), 4, 3))
+        with self.assertRaises(ValueError):
+            interpolate_rgb((0, 0, 0), (9, 9, 9), 1, 0)
+
+    def test_text_colour_always_selects_the_higher_contrast_option(self):
+        lcd = FakeLCD()
+
+        self.assertEqual(
+            lcd.white,
+            high_contrast_text_colour((0, 0, 0), lcd.black, lcd.white),
+        )
+        for background in (
+            TRACK_GREEN_RGB,
+            TRACK_YELLOW_RGB,
+            TRACK_AMBER_RGB,
+            TRACK_RED_RGB,
+            scheduled_track_rgb(100, 600),
+            scheduled_track_rgb(300, 600),
+            scheduled_track_rgb(500, 600),
+        ):
+            self.assertEqual(
+                lcd.black,
+                high_contrast_text_colour(background, lcd.black, lcd.white),
+            )
+        self.assertEqual(
+            lcd.white,
+            high_contrast_text_colour(
+                TRACK_OVERRUN_PURPLE_RGB,
+                lcd.black,
+                lcd.white,
+            ),
+        )
+
+    def test_track_frames_follow_gradient_and_use_deep_purple_for_overrun(self):
         lcd = FakeLCD()
         session = SessionTracker(duration_mins=10, clock=lambda: 100)
         session.start_session()
 
-        running = track_live_frame(session, 609, lcd)
-        last_15 = track_live_frame(session, 610, lcd)
-        last_5 = track_live_frame(session, 670, lcd)
+        start = track_live_frame(session, 100, lcd)
+        one_third = track_live_frame(session, 300, lcd)
+        two_thirds = track_live_frame(session, 500, lcd)
+        near_expiry = track_live_frame(session, 699, lcd)
         overrun = track_live_frame(session, 700, lcd)
 
         self.assertTrue(
             all(
                 frame[2] == COUNTDOWN_TEXT_SIZE
-                for frame in (running, last_15, last_5, overrun)
+                for frame in (
+                    start,
+                    one_third,
+                    two_thirds,
+                    near_expiry,
+                    overrun,
+                )
             )
         )
-        self.assertEqual((None, None), running[3:])
-        self.assertEqual((lcd.salmon, lcd.black), last_15[3:])
-        self.assertEqual((lcd.lilac, None), last_5[3:])
+        self.assertEqual(
+            (rgb_to_display565(TRACK_GREEN_RGB), lcd.black),
+            start[3:],
+        )
+        self.assertEqual(
+            (rgb_to_display565(TRACK_YELLOW_RGB), lcd.black),
+            one_third[3:],
+        )
+        self.assertEqual(
+            (rgb_to_display565(TRACK_AMBER_RGB), lcd.black),
+            two_thirds[3:],
+        )
+        self.assertNotEqual(two_thirds[3], near_expiry[3])
         self.assertEqual("00:00", overrun[0])
-        self.assertEqual((lcd.red, lcd.black), overrun[3:])
+        self.assertEqual(
+            (rgb_to_display565(TRACK_OVERRUN_PURPLE_RGB), lcd.white),
+            overrun[3:],
+        )
 
     def test_rest_frame_uses_larger_countdown_size(self):
         lcd = FakeLCD()
