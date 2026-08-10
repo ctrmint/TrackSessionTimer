@@ -108,11 +108,16 @@ def run_application(lcd):
 
     system_params, user_params = load_configuration(PARAMS_FILE, USER_FILE)
     print("User Parameters: " + str(user_params))
+    lcd.set_rotation(user_params["DISPLAY_ROTATION_DEG"])
     _apply_brightness(lcd, user_params["BRIGHTNESS_PERCENT"])
 
     try:
         touch = initialize_with_retry(
-            lambda: Touch_CST816T(mode=1, LCD=lcd),
+            lambda: Touch_CST816T(
+                mode=1,
+                LCD=lcd,
+                rotation=user_params["DISPLAY_ROTATION_DEG"],
+            ),
             "CST816T",
         )
         run_startup_screens(

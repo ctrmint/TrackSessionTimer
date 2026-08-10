@@ -89,7 +89,7 @@ Press and continuously hold the touchscreen for five seconds from the Timer Read
 
 * **Timer Mode** retains the existing track, rest, and Launch Mode workflow.
 * **G Mode** calibrates the stationary QMI8658 baseline, then presents a responsive graphical round G meter rather than numeric telemetry. The green filled marker and short trail show the current filtered acceleration vector at the LCD's display-limited refresh rate. The red hollow marker records the maximum vector, while the red perimeter arc shows peak magnitude relative to the 4 g visual scale. Double-tap resets the trail and peak. Hold for five seconds to return to the mode menu.
-* **Settings** provides 25%, 50%, 75%, and 100% brightness choices with immediate preview. Swipe up saves; swipe down cancels and restores the previous brightness. **Restore defaults** requires confirmation, then restores Timer Mode, 100% brightness, 20-minute track/rest sessions, and disabled Launch Mode.
+* **Settings** provides 25%, 50%, 75%, and 100% brightness choices with immediate preview. It also supports 0°, 90°, 180°, and 270° clockwise mounting angles: the LCD counter-rotates its output and touch gestures remain relative to the text on screen. Swipe up saves a preview; swipe down cancels and restores the previous brightness or orientation. **Restore defaults** requires confirmation, then restores Timer Mode, 100% brightness, 0° rotation, 20-minute track/rest sessions, and disabled Launch Mode.
 
 If the IMU is unavailable in G Mode, the firmware shows an actionable message and safely returns to Timer Mode. The timer remains usable.
 
@@ -160,7 +160,7 @@ The second command should identify an RP2040 MicroPython board.
 Run these commands from the repository root. Supporting files and font assets are copied first; `main.py` is installed last as the automatic entry point.
 
 ```sh
-mpremote connect auto fs cp application.py battery.py configuration.py font_data.py font_renderer.py g_meter.py hardware.py hardware_splash.py hold_detector.py launch.py lcd_1inch28.py live_display.py operating_modes.py params.json qmi8658.py ready_screen.py settings.py splash.py timer_mode.py timing.py touch_drive.py font_data*.bin startup_splash.rgb565 :
+mpremote connect auto fs cp application.py battery.py configuration.py font_data.py font_renderer.py g_meter.py hardware.py hardware_splash.py hold_detector.py launch.py lcd_1inch28.py live_display.py operating_modes.py orientation.py params.json qmi8658.py ready_screen.py settings.py splash.py timer_mode.py timing.py touch_drive.py font_data*.bin startup_splash.rgb565 :
 mpremote connect auto fs cp main.py :
 mpremote connect auto reset
 ```
@@ -171,7 +171,7 @@ On a fresh installation, the firmware creates `user.json` with safe defaults. To
 mpremote connect auto fs cp user.json :
 ```
 
-When upgrading an existing device, omit that command so its saved track duration, rest duration, and launch sensitivity are preserved.
+When upgrading an existing device, omit that command so all of its saved user settings are preserved. The firmware adds a safe 0° rotation automatically when upgrading an older `user.json`.
 
 ### 4. Verify first boot
 
@@ -197,11 +197,11 @@ The QMI8658 IMU is optional unless a non-zero Launch Mode sensitivity is selecte
 Version 4.0.0 uses two separate configuration scopes:
 
 * `params.json` contains system-owned choices and display behavior: `DURATION_VALUES`, `LAUNCH_SENSE_VALUES`, `VERSION`, `DISPLAY_DELAY_REST`, `DISPLAY_DELAY_REST_COLOUR`, `STARTUP_SPLASH_DURATION_SEC`, `HARDWARE_SPLASH_DURATION_SEC`, and `MODE_MENU_HOLD_SEC`.
-* `user.json` contains the current user selections: `RACE_LENGTH` (track-session minutes), `REST_LENGTH` (pit-rest minutes), `SENSITIVITY` (launch threshold; `0` disables Launch Mode), `OPERATING_MODE` (`timer` or `g`), and `BRIGHTNESS_PERCENT`.
+* `user.json` contains the current user selections: `RACE_LENGTH` (track-session minutes), `REST_LENGTH` (pit-rest minutes), `SENSITIVITY` (launch threshold; `0` disables Launch Mode), `OPERATING_MODE` (`timer` or `g`), `BRIGHTNESS_PERCENT`, and `DISPLAY_ROTATION_DEG` (clockwise device mounting angle: `0`, `90`, `180`, or `270`).
 
 Launch sensitivity is the filtered change in acceleration-vector magnitude from a 0.4-second stationary baseline, measured in g. This removes gravity and mounting orientation and handles acceleration on either side of every axis. Lower non-zero values are more sensitive. Detection requires three consecutive samples above the threshold; double-tap cancels the wait, and a 30-second timeout returns to the Ready screen. See `User Guide.md` for the practical meaning of every configured value.
 
-The firmware has built-in system and user defaults. Missing, malformed, or unsupported user values are replaced with safe defaults and saved using the canonical keys above. Existing `TRACK_LENGTH`, `TRACK_SESSION_LENGTH`, and `REST_SESSION_LENGTH` user keys are migrated automatically, while older files gain Timer Mode and 100% brightness defaults.
+The firmware has built-in system and user defaults. Missing, malformed, or unsupported user values are replaced with safe defaults and saved using the canonical keys above. Existing `TRACK_LENGTH`, `TRACK_SESSION_LENGTH`, and `REST_SESSION_LENGTH` user keys are migrated automatically, while older files gain Timer Mode, 100% brightness, and 0° rotation defaults.
 
 ## Host-side tests
 
@@ -211,4 +211,4 @@ Run the hardware-independent regression suite with:
 python -m unittest discover -s tests -v
 ```
 
-The suite uses fakes for time, continuous holds, touch gestures, mode/settings navigation, graphical G vectors, display calls, filesystem operations, accelerometer samples, battery readings, and USB power state. Version 4.0.0 was additionally validated on the supported Waveshare board for both startup screens, Timer and G Mode boots, native G-meter rendering, LCD/font rendering, CST816S touch-state detection, QMI8658 sampling, saved settings, launch behavior, and the Ready-screen battery indicator.
+The suite uses fakes for time, continuous holds, touch gestures, all four display rotations, mode/settings navigation, graphical G vectors, display calls, filesystem operations, accelerometer samples, battery readings, and USB power state. Version 4.0.0 was additionally validated on the supported Waveshare board for both startup screens, Timer and G Mode boots, native G-meter rendering, LCD/font rendering, CST816S touch-state detection, QMI8658 sampling, saved settings, launch behavior, and the Ready-screen battery indicator.

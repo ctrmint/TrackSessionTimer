@@ -181,11 +181,12 @@ class SettingsTests(unittest.TestCase):
                 "REST_LENGTH": 15,
                 "OPERATING_MODE": "timer",
                 "BRIGHTNESS_PERCENT": 100,
+                "DISPLAY_ROTATION_DEG": 0,
             },
             normalized,
         )
 
-    def test_existing_user_file_gains_mode_and_brightness_defaults(self):
+    def test_existing_user_file_gains_mode_brightness_and_rotation_defaults(self):
         normalized, changed = normalize_user_params(
             {"SENSITIVITY": 0, "RACE_LENGTH": 10, "REST_LENGTH": 15},
             DEFAULT_SYSTEM_PARAMS,
@@ -194,6 +195,7 @@ class SettingsTests(unittest.TestCase):
         self.assertTrue(changed)
         self.assertEqual("timer", normalized["OPERATING_MODE"])
         self.assertEqual(100, normalized["BRIGHTNESS_PERCENT"])
+        self.assertEqual(0, normalized["DISPLAY_ROTATION_DEG"])
 
     def test_invalid_mode_and_brightness_use_defaults(self):
         invalid = dict(DEFAULT_USER_PARAMS)
@@ -208,6 +210,29 @@ class SettingsTests(unittest.TestCase):
         self.assertTrue(changed)
         self.assertEqual("timer", normalized["OPERATING_MODE"])
         self.assertEqual(100, normalized["BRIGHTNESS_PERCENT"])
+
+    def test_rotation_accepts_four_angles_and_rejects_other_values(self):
+        for rotation in (0, 90, 180, 270):
+            with self.subTest(rotation=rotation):
+                user = dict(DEFAULT_USER_PARAMS)
+                user["DISPLAY_ROTATION_DEG"] = rotation
+                normalized, changed = normalize_user_params(
+                    user,
+                    DEFAULT_SYSTEM_PARAMS,
+                )
+                self.assertFalse(changed)
+                self.assertEqual(rotation, normalized["DISPLAY_ROTATION_DEG"])
+
+        for invalid in (True, 45, 360, "90"):
+            with self.subTest(invalid=invalid):
+                user = dict(DEFAULT_USER_PARAMS)
+                user["DISPLAY_ROTATION_DEG"] = invalid
+                normalized, changed = normalize_user_params(
+                    user,
+                    DEFAULT_SYSTEM_PARAMS,
+                )
+                self.assertTrue(changed)
+                self.assertEqual(0, normalized["DISPLAY_ROTATION_DEG"])
 
     def test_restore_user_defaults_replaces_complete_file(self):
         with tempfile.TemporaryDirectory() as directory:

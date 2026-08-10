@@ -6,6 +6,7 @@ import unittest
 from font_renderer import measure_text, pixel_height
 from hold_detector import HoldDetector
 from operating_modes import (
+    SETTINGS_CHOICES,
     apply_brightness,
     brightness_duty,
     brightness_lines,
@@ -13,8 +14,10 @@ from operating_modes import (
     configure_operating_mode,
     mode_menu_lines,
     restore_confirmation_lines,
+    rotation_lines,
     select_brightness,
     select_operating_mode,
+    select_rotation,
     settings_menu_lines,
 )
 from settings import DEFAULT_USER_PARAMS, file_in
@@ -34,21 +37,29 @@ class FakeClock:
 class FakeLCD:
     def __init__(self):
         self.duties = []
+        self.rotations = []
 
     def set_bl_pwm(self, duty):
         self.duties.append(duty)
+
+    def set_rotation(self, degrees):
+        self.rotations.append(degrees)
 
 
 class FakeTouch:
     def __init__(self, gestures):
         self.gestures = iter(gestures)
         self.screens = []
+        self.rotations = []
 
     def ControlScreen(self, lcd, text_array=None, back_colour=None):
         self.screens.append((text_array, back_colour))
 
     def GetGesture(self, lcd):
         return next(self.gestures)
+
+    def Set_Rotation(self, degrees):
+        self.rotations.append(degrees)
 
 
 class OperatingModeTests(unittest.TestCase):
@@ -118,14 +129,17 @@ class OperatingModeTests(unittest.TestCase):
         self.assertEqual("g", selected)
         self.assertIsNone(cancelled)
 
-    def test_all_menu_text_fits_round_display(self):
-        for index in range(3):
-            self.assert_round_fit(mode_menu_lines(index))
-            self.assert_round_fit(settings_menu_lines(index))
-        for brightness in (25, 50, 75, 100):
-            self.assert_round_fit(brightness_lines(brightness))
-        for selected in ("Cancel", "RESTORE"):
-            self.assert_round_fit(restore_confirmation_lines(selected))
+    def test_all_menu_text_fits_round_display_at_every_rotation(self):
+        for rotation in (0, 90, 180, 270):
+            for index in range(len(SETTINGS_CHOICES)):
+                self.assert_round_fit(settings_menu_lines(index))
+            for index in range(3):
+                self.assert_round_fit(mode_menu_lines(index))
+            for brightness in (25, 50, 75, 100):
+                self.assert_round_fit(brightness_lines(brightness))
+            self.assert_round_fit(rotation_lines(rotation))
+            for selected in ("Cancel", "RESTORE"):
+                self.assert_round_fit(restore_confirmation_lines(selected))
 
     def test_brightness_cancel_restores_previous_preview(self):
         lcd = FakeLCD()
@@ -139,6 +153,47 @@ class OperatingModeTests(unittest.TestCase):
         self.assertFalse(should_save)
         self.assertIn(brightness_duty(75), lcd.duties)
         self.assertEqual(brightness_duty(100), lcd.duties[-1])
+
+    def test_rotation_cancel_restores_display_and_touch_preview(self):
+        lcd = FakeLCD()
+        touch = FakeTouch(["right", "down"])
+
+        selected, should_save = select_rotation(touch, lcd, 0)
+
+        self.assertEqual(0, selected)
+        self.assertFalse(should_save)
+        self.assertEqual([0, 90, 0], lcd.rotations)
+        self.assertEqual([0, 90, 0], touch.rotations)
+
+    def test_rotation_setting_is_previewed_and_persisted(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = os.path.join(directory, "user.json")
+            lcd = FakeLCD()
+            touch = FakeTouch(
+                [
+                    "left", "up",       # Settings
+                    "right", "up",      # Rotation
+                    "right", "up",      # 90 degrees, save
+                    "down",              # leave Settings
+                    "down",              # cancel mode menu
+                ]
+            )
+
+            updated, mode = configure_operating_mode(
+                touch,
+                lcd,
+                dict(DEFAULT_USER_PARAMS),
+                path,
+            )
+
+            self.assertEqual("timer", mode)
+            self.assertEqual(90, updated["DISPLAY_ROTATION_DEG"])
+            self.assertEqual(
+                90,
+                file_in(path, debug=False)["DISPLAY_ROTATION_DEG"],
+            )
+            self.assertEqual(90, lcd.rotations[-1])
+            self.assertEqual(90, touch.rotations[-1])
 
     def test_selected_mode_is_persisted(self):
         with tempfile.TemporaryDirectory() as directory:
@@ -187,17 +242,20 @@ class OperatingModeTests(unittest.TestCase):
             changed = dict(DEFAULT_USER_PARAMS)
             changed["OPERATING_MODE"] = "g"
             changed["BRIGHTNESS_PERCENT"] = 25
+            changed["DISPLAY_ROTATION_DEG"] = 180
             changed["RACE_LENGTH"] = 60
+            lcd = FakeLCD()
+            touch = FakeTouch(
+                [
+                    "right", "up",      # Settings from G Mode
+                    "right", "right", "up",  # Restore defaults
+                    "right", "up",      # Confirm RESTORE
+                ]
+            )
 
             updated, mode = configure_operating_mode(
-                FakeTouch(
-                    [
-                        "right", "up",      # Settings from G Mode
-                        "right", "up",      # Restore defaults
-                        "right", "up",      # Confirm RESTORE
-                    ]
-                ),
-                FakeLCD(),
+                touch,
+                lcd,
                 changed,
                 path,
             )
@@ -205,6 +263,8 @@ class OperatingModeTests(unittest.TestCase):
             self.assertEqual("timer", mode)
             self.assertEqual(DEFAULT_USER_PARAMS, updated)
             self.assertEqual(DEFAULT_USER_PARAMS, file_in(path, debug=False))
+            self.assertEqual(0, lcd.rotations[-1])
+            self.assertEqual(0, touch.rotations[-1])
 
     def test_restore_defaults_can_be_cancelled_after_viewing_restore(self):
         confirmed = confirm_restore_defaults(

@@ -25,10 +25,12 @@ DEFAULT_USER_PARAMS = {
     "REST_LENGTH": 20,
     "OPERATING_MODE": "timer",
     "BRIGHTNESS_PERCENT": 100,
+    "DISPLAY_ROTATION_DEG": 0,
 }
 
 OPERATING_MODES = ("timer", "g")
 BRIGHTNESS_VALUES = (25, 50, 75, 100)
+DISPLAY_ROTATION_VALUES = (0, 90, 180, 270)
 
 LEGACY_USER_KEYS = {
     "TRACK_LENGTH": "RACE_LENGTH",
@@ -160,6 +162,10 @@ def normalize_user_params(data, system_params=None):
         "BRIGHTNESS_PERCENT",
         DEFAULT_USER_PARAMS["BRIGHTNESS_PERCENT"],
     )
+    display_rotation = migrated.get(
+        "DISPLAY_ROTATION_DEG",
+        DEFAULT_USER_PARAMS["DISPLAY_ROTATION_DEG"],
+    )
 
     if (
         not isinstance(race_length, int)
@@ -183,6 +189,12 @@ def normalize_user_params(data, system_params=None):
         or brightness_percent not in BRIGHTNESS_VALUES
     ):
         brightness_percent = DEFAULT_USER_PARAMS["BRIGHTNESS_PERCENT"]
+    if (
+        not isinstance(display_rotation, int)
+        or isinstance(display_rotation, bool)
+        or display_rotation not in DISPLAY_ROTATION_VALUES
+    ):
+        display_rotation = DEFAULT_USER_PARAMS["DISPLAY_ROTATION_DEG"]
 
     normalized = {
         "SENSITIVITY": sensitivity,
@@ -190,6 +202,7 @@ def normalize_user_params(data, system_params=None):
         "REST_LENGTH": rest_length,
         "OPERATING_MODE": operating_mode,
         "BRIGHTNESS_PERCENT": brightness_percent,
+        "DISPLAY_ROTATION_DEG": display_rotation,
     }
     return normalized, normalized != source
 

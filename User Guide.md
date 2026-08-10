@@ -16,7 +16,7 @@ The following describes general operation of both the ``Track Session`` and ``Re
 * Once the ``Rest in Pits Session`` is complete, the timer will return to the ``Primary screen``.  The ``Rest in Pits  Session``  can be terminated with a ``Double Tap``.
 
 ## Configuration / Setup
-Track duration, rest duration, launch sensitivity, operating mode, and brightness are saved to `user.json` when changed. These settings persist across restarts and power loss. If the file is missing, damaged, or contains unsupported values, the timer restores safe defaults and rewrites the file using the canonical setting names.
+Track duration, rest duration, launch sensitivity, operating mode, brightness, and display rotation are saved to `user.json` when changed. These settings persist across restarts and power loss. If the file is missing, damaged, or contains unsupported values, the timer restores safe defaults and rewrites the file using the canonical setting names.
 
 ### Operating Mode Menu
 
@@ -44,7 +44,8 @@ The graph removes the stationary gravity/mounting baseline and does not rely on 
 Choose ``Settings`` from the operating-mode menu.
 
 * ``Brightness`` offers 25%, 50%, 75%, and 100%. Left/right previews each level immediately, ``Swipe UP`` saves, and ``Swipe DOWN`` cancels and restores the previous level.
-* ``Restore defaults`` requires an explicit confirmation. Confirming restores Timer Mode, 100% brightness, 20-minute track and rest sessions, and disabled Launch Mode. Cancelling changes nothing.
+* ``Rotation`` supports mounting the device at 0°, 90°, 180°, or 270°. The value is the physical device rotation clockwise from its original 0° position. Left/right previews the orientation immediately; the text and directional gestures rotate together, so swipes stay relative to the displayed instructions. ``Swipe UP`` saves, while ``Swipe DOWN`` safely restores the previous orientation.
+* ``Restore defaults`` requires an explicit confirmation. Confirming restores Timer Mode, 100% brightness, 0° rotation, 20-minute track and rest sessions, and disabled Launch Mode. Cancelling changes nothing.
 * Choose ``Back`` or swipe down to return to the operating-mode menu, then select or cancel back to an operating mode.
 
 ### Session Duration
