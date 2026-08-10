@@ -287,8 +287,8 @@ class Touch_CST816T(object):
             textsize_rem = 5
         self.Set_Mode(0)
         LCD.fill(backColour)
-        LCD.write_centered(remaining,82,textsize_rem,textColour)
-        LCD.write_centered(elapsed,180,3,textColour)
+        LCD.write_time_centered(remaining,82,textsize_rem,textColour)
+        LCD.write_time_centered(elapsed,180,3,textColour)
         LCD.show()
     
     

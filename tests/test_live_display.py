@@ -49,7 +49,11 @@ class LiveDisplayTests(unittest.TestCase):
         display_radius = 120
         y_position = 82
         text_height = pixel_height(COUNTDOWN_TEXT_SIZE)
-        text_width = measure_text("60:00", COUNTDOWN_TEXT_SIZE)
+        text_width = measure_text(
+            "60:00",
+            COUNTDOWN_TEXT_SIZE,
+            tabular_digits=True,
+        )
 
         for edge_y in (y_position, y_position + text_height - 1):
             distance_from_center = edge_y - display_radius

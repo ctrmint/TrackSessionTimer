@@ -79,6 +79,37 @@ class FontRendererTests(unittest.TestCase):
         self.assertLess(measure_text("Timer", 2), measure_text("Timer", 4))
         self.assertGreater(measure_text(" ", 2), 0)
 
+    def test_tabular_times_keep_the_same_width_for_every_digit(self):
+        widths = {
+            measure_text(value, 7, tabular_digits=True)
+            for value in ("00:00", "11:11", "24:57", "60:00", "88:88")
+        }
+
+        self.assertEqual(1, len(widths))
+        self.assertNotEqual(measure_text("11:11", 7), measure_text("88:88", 7))
+
+    def test_tabular_centering_keeps_time_origin_fixed(self):
+        surface = FakeSurface()
+
+        narrow = draw_centered(
+            surface,
+            "11:11",
+            20,
+            7,
+            1,
+            tabular_digits=True,
+        )
+        wide = draw_centered(
+            surface,
+            "88:88",
+            20,
+            7,
+            1,
+            tabular_digits=True,
+        )
+
+        self.assertEqual(narrow, wide)
+
     def test_draw_uses_single_pixel_scanlines(self):
         surface = FakeSurface()
         width = draw_text(surface, "8:15", 4, 7, 5, 0xFFFF)
