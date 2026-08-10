@@ -73,7 +73,7 @@ def initialize_with_retry(
 
 
 def initialize_optional_imu(sensitivity, factory, **retry_options):
-    """Initialize the IMU only for Launch Mode and degrade on failure."""
+    """Initialize the IMU only when a feature requires it, degrading safely."""
     if float(sensitivity) <= 0:
         return None, None
 
@@ -82,7 +82,7 @@ def initialize_optional_imu(sensitivity, factory, **retry_options):
         sensor = initialize_with_retry(factory, "QMI8658", **retry_options)
         return sensor, None
     except PeripheralError as error:
-        logger("Launch Mode disabled: {}".format(error))
+        logger("IMU unavailable: {}".format(error))
         return None, error
 
 

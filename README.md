@@ -95,9 +95,15 @@ Press and continuously hold the touchscreen for five seconds from the Timer Read
 
 * **Timer Mode** retains the existing track, rest, and Launch Mode workflow.
 * **G Mode** calibrates the stationary QMI8658 baseline, then presents a responsive graphical round G meter rather than numeric telemetry. The green filled marker and short trail show the current filtered acceleration vector at the LCD's display-limited refresh rate. The red hollow marker records the maximum vector, while the red perimeter arc shows peak magnitude relative to the 4 g visual scale. Double-tap resets the trail and peak. Hold for five seconds to return to the mode menu.
-* **Settings** provides 25%, 50%, 75%, and 100% brightness choices with immediate preview. It also supports 0°, 90°, 180°, and 270° clockwise mounting angles: the LCD counter-rotates its output and touch gestures remain relative to the text on screen. Swipe up saves a preview; swipe down cancels and restores the previous brightness or orientation. **Restore defaults** requires confirmation, then restores Timer Mode, 100% brightness, 0° rotation, 20-minute track/rest sessions, and disabled Launch Mode.
+* **Settings** provides 25%, 50%, 75%, and 100% brightness choices with immediate preview. Rotation offers **Auto** plus fixed 0°, 90°, 180°, and 270° clockwise mounting angles. Auto uses the onboard IMU to keep the display upright as the device turns; fixed choices continue to work without the IMU. In every case, touch gestures remain relative to the text on screen. Swipe up saves a preview; swipe down cancels and restores the previous brightness or orientation. **Restore defaults** requires confirmation, then restores Timer Mode, 100% brightness, fixed 0° rotation, 20-minute track/rest sessions, and disabled Launch Mode.
 
 If the IMU is unavailable in G Mode, the firmware shows an actionable message and safely returns to Timer Mode. The timer remains usable.
+
+### Automatic orientation
+
+Auto rotation samples the QMI8658 at a bounded 10 Hz and filters the gravity vector before selecting one of the four display orientations. A new angle must remain stable for 300 ms and clearly dominate the adjacent axis, preventing rapid changes near 45° boundaries or during short acceleration spikes. The LCD controller and touch-direction mapping change together, and the current framebuffer is redrawn without allocating another 240×240 buffer. Active track/rest timing is neither reset nor paused.
+
+An accelerometer cannot determine rotation around gravity when the screen is nearly horizontal. In that position Auto deliberately retains the last reliable angle until the device is upright enough to resolve again. Detected angles remain in RAM to avoid flash wear; `user.json` stores only the `auto` selection. If the IMU is missing or later fails, Auto freezes safely at its last angle and Timer Mode remains available. Choose a fixed angle to operate without automatic sensing.
 
 ## Supported hardware
 
@@ -166,7 +172,7 @@ The second command should identify an RP2040 MicroPython board.
 Run these commands from the repository root. Supporting files and font assets are copied first; `main.py` is installed last as the automatic entry point.
 
 ```sh
-mpremote connect auto fs cp application.py battery.py configuration.py font_data.py font_renderer.py g_meter.py hardware.py hardware_splash.py hold_detector.py launch.py lcd_1inch28.py live_display.py operating_modes.py orientation.py params.json qmi8658.py ready_screen.py settings.py splash.py timer_mode.py timing.py touch_drive.py font_data*.bin startup_splash.rgb565 :
+mpremote connect auto fs cp application.py auto_rotation.py battery.py configuration.py font_data.py font_renderer.py g_meter.py hardware.py hardware_splash.py hold_detector.py launch.py lcd_1inch28.py live_display.py operating_modes.py orientation.py params.json qmi8658.py ready_screen.py settings.py splash.py timer_mode.py timing.py touch_drive.py font_data*.bin startup_splash.rgb565 :
 mpremote connect auto fs cp main.py :
 mpremote connect auto reset
 ```
@@ -196,14 +202,14 @@ If first boot fails:
 
 The touchscreen is required for safe operation. A transient touchscreen I2C failure is retried three times at 100 ms intervals; an unexpected chip ID is not retried. If detection still fails, the firmware shows an actionable error, logs the detailed cause over serial, and stops before using an incomplete touch object.
 
-The QMI8658 IMU is optional unless a non-zero Launch Mode sensitivity is selected. It is not initialized when Launch Mode is off. Transient initialization failures receive the same three attempts, while an unexpected chip ID fails immediately. If initialization or a launch-time sample fails, Launch Mode is disabled for the current run and the standard swipe-down timer remains available. The saved sensitivity is retained so the firmware can retry after a restart or the next Launch Mode configuration change.
+The QMI8658 IMU is optional unless a non-zero Launch Mode sensitivity, G Mode, or Auto rotation is selected. It is not initialized when none of those features needs it. Transient initialization failures receive three attempts, while an unexpected chip ID fails immediately. If initialization or a runtime sample fails, sensor-dependent behavior degrades safely and the standard timer remains available. Auto retains its last reliable orientation, and manual rotation choices remain usable. Saved choices are retained so the firmware can retry after a restart.
 
 ## Configuration files
 
 Version 4.1.0 uses two separate configuration scopes:
 
 * `params.json` contains system-owned choices and display behavior: `DURATION_VALUES`, `LAUNCH_SENSE_VALUES`, `VERSION`, `DISPLAY_DELAY_REST`, `DISPLAY_DELAY_REST_COLOUR`, `STARTUP_SPLASH_DURATION_SEC`, `HARDWARE_SPLASH_DURATION_SEC`, and `MODE_MENU_HOLD_SEC`.
-* `user.json` contains the current user selections: `RACE_LENGTH` (track-session minutes), `REST_LENGTH` (pit-rest minutes), `SENSITIVITY` (launch threshold; `0` disables Launch Mode), `OPERATING_MODE` (`timer` or `g`), `BRIGHTNESS_PERCENT`, and `DISPLAY_ROTATION_DEG` (clockwise device mounting angle: `0`, `90`, `180`, or `270`).
+* `user.json` contains the current user selections: `RACE_LENGTH` (track-session minutes), `REST_LENGTH` (pit-rest minutes), `SENSITIVITY` (launch threshold; `0` disables Launch Mode), `OPERATING_MODE` (`timer` or `g`), `BRIGHTNESS_PERCENT`, and `DISPLAY_ROTATION_DEG` (`auto` or the fixed clockwise device mounting angle `0`, `90`, `180`, or `270`).
 
 Launch sensitivity is the filtered change in acceleration-vector magnitude from a 0.4-second stationary baseline, measured in g. This removes gravity and mounting orientation and handles acceleration on either side of every axis. Lower non-zero values are more sensitive. Detection requires three consecutive samples above the threshold; double-tap cancels the wait, and a 30-second timeout returns to the Ready screen. See `User Guide.md` for the practical meaning of every configured value.
 
@@ -217,4 +223,4 @@ Run the hardware-independent regression suite with:
 python -m unittest discover -s tests -v
 ```
 
-The suite uses fakes for time, continuous holds, touch gestures, all four display rotations, mode/settings navigation, graphical G vectors, display calls, filesystem operations, accelerometer samples, battery readings, and USB power state. Version 4.0.0 was additionally validated on the supported Waveshare board for both startup screens, Timer and G Mode boots, native G-meter rendering, LCD/font rendering, CST816S touch-state detection, QMI8658 sampling, saved settings, launch behavior, and the Ready-screen battery indicator.
+The suite uses fakes for time, continuous holds, touch gestures, automatic and fixed display rotation, gravity filtering/hysteresis, mode/settings navigation, graphical G vectors, display calls, filesystem operations, accelerometer samples, battery readings, and USB power state. Version 4.0.0 was additionally validated on the supported Waveshare board for both startup screens, Timer and G Mode boots, native G-meter rendering, LCD/font rendering, CST816S touch-state detection, QMI8658 sampling, saved settings, launch behavior, and the Ready-screen battery indicator.

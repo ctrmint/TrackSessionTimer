@@ -62,6 +62,39 @@ class FakeTouch:
         self.rotations.append(degrees)
 
 
+class FakeDetector:
+    def __init__(self):
+        self.reliable = True
+
+
+class FakeAutoRotation:
+    def __init__(self, current_rotation=0, available=True):
+        self.current_rotation = current_rotation
+        self.available = available
+        self.detector = FakeDetector()
+        self.enabled = False
+        self.disabled_at = []
+        self.updates = 0
+
+    def enable(self):
+        self.enabled = True
+        return self.available
+
+    def disable(self, current_rotation=None):
+        self.enabled = False
+        self.current_rotation = current_rotation
+        self.disabled_at.append(current_rotation)
+
+    def update(self, force=False, redraw=True):
+        self.updates += 1
+        return False
+
+    def status_text(self):
+        if not self.available:
+            return "IMU unavailable"
+        return "Detected: {} deg".format(self.current_rotation)
+
+
 class OperatingModeTests(unittest.TestCase):
     def assert_round_fit(self, lines):
         radius = 120
@@ -138,6 +171,9 @@ class OperatingModeTests(unittest.TestCase):
             for brightness in (25, 50, 75, 100):
                 self.assert_round_fit(brightness_lines(brightness))
             self.assert_round_fit(rotation_lines(rotation))
+            self.assert_round_fit(
+                rotation_lines("auto", FakeAutoRotation(rotation))
+            )
             for selected in ("Cancel", "RESTORE"):
                 self.assert_round_fit(restore_confirmation_lines(selected))
 
@@ -194,6 +230,51 @@ class OperatingModeTests(unittest.TestCase):
             )
             self.assertEqual(90, lcd.rotations[-1])
             self.assertEqual(90, touch.rotations[-1])
+
+    def test_auto_rotation_is_previewed_and_persisted(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = os.path.join(directory, "user.json")
+            auto_rotation = FakeAutoRotation(current_rotation=270)
+
+            updated, mode = configure_operating_mode(
+                FakeTouch(
+                    [
+                        "left", "up",       # Settings
+                        "right", "up",      # Rotation
+                        "left", "up",       # Auto, save
+                        "down",              # leave Settings
+                        "down",              # cancel mode menu
+                    ]
+                ),
+                FakeLCD(),
+                dict(DEFAULT_USER_PARAMS),
+                path,
+                auto_rotation=auto_rotation,
+            )
+
+            self.assertEqual("timer", mode)
+            self.assertEqual("auto", updated["DISPLAY_ROTATION_DEG"])
+            self.assertEqual(
+                "auto",
+                file_in(path, debug=False)["DISPLAY_ROTATION_DEG"],
+            )
+            self.assertTrue(auto_rotation.enabled)
+            self.assertGreater(auto_rotation.updates, 0)
+
+    def test_auto_preview_cancel_restores_previous_fixed_rotation(self):
+        auto_rotation = FakeAutoRotation(current_rotation=0)
+
+        selected, should_save = select_rotation(
+            FakeTouch(["left", "down"]),
+            FakeLCD(),
+            0,
+            auto_rotation=auto_rotation,
+        )
+
+        self.assertEqual(0, selected)
+        self.assertFalse(should_save)
+        self.assertFalse(auto_rotation.enabled)
+        self.assertEqual(0, auto_rotation.disabled_at[-1])
 
     def test_selected_mode_is_persisted(self):
         with tempfile.TemporaryDirectory() as directory:

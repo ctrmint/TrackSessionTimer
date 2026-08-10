@@ -276,7 +276,7 @@ def run_g_mode(sensor, touch, lcd, hold_seconds, clock=time):
             state.reset_peak()
         draw_g_meter_frame(lcd, state, mode_hold_seconds=hold_seconds)
 
-        if hold_detector.update(touch.IsPressed()):
+        if hold_detector.update(touch.IsPressed(lcd)):
             touch.ClearPendingInput()
             return state
         delay_ms = remaining_frame_delay_ms(clock, frame_started)

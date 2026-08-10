@@ -44,6 +44,7 @@ class Touch_CST816T(object):
         self._address = address #Set slave address 
         self._clock = clock
         self._configured_mode = None
+        self._auto_rotation = None
         self.Set_Rotation(rotation)
         try:
             self._bus = bus
@@ -161,8 +162,9 @@ class Touch_CST816T(object):
         self.X_point=x_point
         self.Y_point=y_point
 
-    def IsPressed(self):
+    def IsPressed(self, LCD=None):
         """Return whether the controller currently reports a physical touch."""
+        self._update_auto_rotation(LCD)
         return bool(self._read_byte(0x02) & 0x0F)
 
     def ClearPendingInput(self):
@@ -173,6 +175,26 @@ class Touch_CST816T(object):
     def Set_Rotation(self, rotation):
         """Keep directional gestures intuitive at the selected mount angle."""
         self.rotation = validate_rotation(rotation)
+
+    def Set_Auto_Rotation(self, controller):
+        """Attach the optional automatic-orientation controller."""
+        self._auto_rotation = controller
+
+    def _update_auto_rotation(self, LCD, redraw=True):
+        controller = getattr(self, "_auto_rotation", None)
+        if controller is None or LCD is None:
+            return False
+        return controller.update(redraw=redraw)
+
+    def Wait(self, LCD, seconds, poll_interval_ms=100):
+        """Wait while continuing bounded automatic-orientation polling."""
+        remaining_ms = max(0, int(float(seconds) * 1000))
+        interval_ms = max(1, int(poll_interval_ms))
+        while remaining_ms > 0:
+            self._update_auto_rotation(LCD)
+            delay_ms = min(interval_ms, remaining_ms)
+            _sleep_ms(self._clock, delay_ms)
+            remaining_ms -= delay_ms
 
     def _gesture_name(self, gesture):
         direction = {
@@ -197,6 +219,7 @@ class Touch_CST816T(object):
             self.l = 50
 
     def BootScreen(self, LCD, sleep=4, version_number="0.0"):
+        self._update_auto_rotation(LCD, redraw=False)
         self.Set_Mode(self.Mode)
 
         splash_loaded = False
@@ -269,6 +292,7 @@ class Touch_CST816T(object):
         - back_colour: Optional background color for the screen.
         - refresh: Show immediately, or allow the caller to add graphics first.
         """      
+        self._update_auto_rotation(LCD, redraw=False)
         # Set the background color if provided
         if back_colour is not None:
             self.SetBackColour(LCD, backColour=back_colour)
@@ -291,6 +315,7 @@ class Touch_CST816T(object):
         
         
     def GoScreen(self, LCD, text='..GO!', subtitle=None):
+        self._update_auto_rotation(LCD, redraw=False)
         #self.mode = 0
         #self.Set_Mode(self.Mode)
         LCD.fill(LCD.green)
@@ -298,10 +323,11 @@ class Touch_CST816T(object):
         if subtitle is not None:
             LCD.write_centered(subtitle,170,1,LCD.black)
         LCD.show()
-        time.sleep(1)
+        self.Wait(LCD, 1)
 
 
     def LiveScreen(self, LCD, textsize_rem=None, backColour=None, textColour=None, elapsed=None, remaining=None):
+        self._update_auto_rotation(LCD, redraw=False)
         if remaining is None:
             remaining = "blank!"
         if elapsed is None:
@@ -323,6 +349,7 @@ class Touch_CST816T(object):
         """
         Check for up gesture.
         """
+        self._update_auto_rotation(LCD)
         if (
             self._gesture_name(self.Gestures) == "up"
             or self.Gestures == G_DOUBLE_CLIC
@@ -336,6 +363,7 @@ class Touch_CST816T(object):
         """
         Check for a double tap stop gesture.
         """
+        self._update_auto_rotation(LCD)
         if self.Gestures == 0x0B:
             self.Gestures = 0
             return True  # double tap stop gesture, returns True
@@ -345,6 +373,7 @@ class Touch_CST816T(object):
     #Gesture
     def GetGesture(self, LCD, debounce_time=0.2):
         return_type = None     
+        self._update_auto_rotation(LCD)
         self.Set_Mode(0)
          
         return_type = self._gesture_name(self.Gestures)

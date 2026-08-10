@@ -128,10 +128,17 @@ def run_startup_screens(
     hardware_duration_sec,
     clock=time,
     details=None,
+    wait=None,
 ):
     """Show artwork, then hardware details, for their configured durations."""
+    def pause(duration):
+        if wait is None:
+            clock.sleep(duration)
+        else:
+            wait(lcd, duration)
+
     touch.BootScreen(lcd, version_number=firmware_version)
-    clock.sleep(startup_duration_sec)
+    pause(startup_duration_sec)
 
     if details is None:
         details = collect_device_details(firmware_version)
@@ -140,5 +147,5 @@ def run_startup_screens(
         text_array=hardware_splash_lines(details),
         back_colour=HARDWARE_SPLASH_BACKGROUND,
     )
-    clock.sleep(hardware_duration_sec)
+    pause(hardware_duration_sec)
     return details

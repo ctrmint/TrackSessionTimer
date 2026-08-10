@@ -32,6 +32,7 @@ def run_timer_mode(
     qmi8658,
     initialize_imu,
     show_imu_degraded,
+    auto_rotation=None,
 ):
     """Run complete timer sessions until a safe Ready-screen hold requests menu."""
     duration_values = system_params["DURATION_VALUES"]
@@ -71,7 +72,7 @@ def run_timer_mode(
                 )
                 ready_screen_dirty = False
 
-            if hold_detector.update(touch.IsPressed()):
+            if hold_detector.update(touch.IsPressed(lcd)):
                 touch.ClearPendingInput()
                 return user_params, qmi8658
 
@@ -128,9 +129,11 @@ def run_timer_mode(
                 )
                 if configured_sensitivity > 0 and qmi8658 is None:
                     qmi8658, imu_error = initialize_imu(configured_sensitivity)
+                    if auto_rotation is not None:
+                        auto_rotation.set_sensor(qmi8658, imu_error)
                     if imu_error is not None:
                         show_imu_degraded(lcd, imu_error)
-                        time.sleep(2)
+                        touch.Wait(lcd, 2)
                 sensitivity = (
                     configured_sensitivity if qmi8658 is not None else 0
                 )
@@ -159,8 +162,10 @@ def run_timer_mode(
             )
         except PeripheralError as error:
             qmi8658 = None
+            if auto_rotation is not None:
+                auto_rotation.set_sensor(None, error)
             show_imu_degraded(lcd, error)
-            time.sleep(2)
+            touch.Wait(lcd, 2)
             continue
         if not launch_detected:
             print("Launch mode cancelled or timed out.")
@@ -179,7 +184,7 @@ def run_timer_mode(
             text_array=[PLINE1, PLINE2],
             back_colour=display_delay_rest_colour,
         )
-        time.sleep(display_delay_rest)
+        touch.Wait(lcd, display_delay_rest)
 
         rest_session.start_session(debug=True)
         run_live_display(
