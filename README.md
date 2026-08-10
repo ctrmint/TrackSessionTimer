@@ -1,13 +1,17 @@
-# Track Session Timer - v4.1.0
+# Track Session Timer - v4.2.0
 Trackday or race session timer.
 
 # Change log
-## Next
+## Version 4.2
+### v4.2.0 [current]
+* Added continuous automatic orientation using the onboard IMU, with display rendering and touch gestures rotating together.
+* Kept Auto rotation safe during active timing and retained normal Timer operation if the IMU is unavailable.
 * Replaced abrupt track-session warning backgrounds with a smooth, duration-proportional green, yellow, amber, and red gradient.
 * Added a distinct deep-purple overrun background and automatic black-or-white timer text chosen for maximum contrast.
+* Expanded hardware-independent regression coverage to 143 tests.
 
 ## Version 4.1
-### v4.1.0 [current]
+### v4.1.0
 * Added persistent 0°, 90°, 180°, and 270° clockwise mounting orientations.
 * Kept display rendering and directional touch gestures aligned at every orientation.
 * Added live rotation preview with explicit save and safe cancellation in Settings.
@@ -111,7 +115,7 @@ An accelerometer cannot determine rotation around gravity when the screen is nea
 
 ## Supported hardware
 
-Version 4.1.0 supports the integrated [Waveshare RP2040-Touch-LCD-1.28](https://www.waveshare.com/product/rp2040-touch-lcd-1.28.htm). This board combines the RP2040, GC9A01A 240x240 LCD, CST816S touchscreen, and QMI8658 IMU used by the firmware. The standalone 1.28-inch Touch LCD connected to a separate Raspberry Pi Pico uses a different pin map and is not currently supported.
+Version 4.2.0 supports the integrated [Waveshare RP2040-Touch-LCD-1.28](https://www.waveshare.com/product/rp2040-touch-lcd-1.28.htm). This board combines the RP2040, GC9A01A 240x240 LCD, CST816S touchscreen, and QMI8658 IMU used by the firmware. The standalone 1.28-inch Touch LCD connected to a separate Raspberry Pi Pico uses a different pin map and is not currently supported.
 
 ### Onboard pin map
 
@@ -191,7 +195,7 @@ When upgrading an existing device, omit that command so all of its saved user se
 
 ### 4. Verify first boot
 
-The display should show the Caterham v4.1.0 splash, the hardware-information splash, and then the green **Ready** screen. The serial console should report the loaded user parameters, `Success:Detected CST816T.`, and the touchscreen revision without a traceback.
+The display should show the Caterham v4.2.0 splash, the hardware-information splash, and then the green **Ready** screen. The serial console should report the loaded user parameters, `Success:Detected CST816T.`, and the touchscreen revision without a traceback.
 
 If first boot fails:
 
@@ -210,7 +214,7 @@ The QMI8658 IMU is optional unless a non-zero Launch Mode sensitivity, G Mode, o
 
 ## Configuration files
 
-Version 4.1.0 uses two separate configuration scopes:
+Version 4.2.0 uses two separate configuration scopes:
 
 * `params.json` contains system-owned choices and display behavior: `DURATION_VALUES`, `LAUNCH_SENSE_VALUES`, `VERSION`, `DISPLAY_DELAY_REST`, `DISPLAY_DELAY_REST_COLOUR`, `STARTUP_SPLASH_DURATION_SEC`, `HARDWARE_SPLASH_DURATION_SEC`, and `MODE_MENU_HOLD_SEC`.
 * `user.json` contains the current user selections: `RACE_LENGTH` (track-session minutes), `REST_LENGTH` (pit-rest minutes), `SENSITIVITY` (launch threshold; `0` disables Launch Mode), `OPERATING_MODE` (`timer` or `g`), `BRIGHTNESS_PERCENT`, and `DISPLAY_ROTATION_DEG` (`auto` or the fixed clockwise device mounting angle `0`, `90`, `180`, or `270`).
