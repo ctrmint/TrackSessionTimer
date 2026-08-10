@@ -68,7 +68,7 @@ The timer utilizes the Waveshare 1.28-inch round touch display, allowing for con
 
 The firmware includes a compact proportional bitmap font rendered directly at the display's native resolution. It replaces enlargement of MicroPython's 8x8 framebuffer font, so large countdown digits and labels retain smooth shapes instead of scaling into square pixels.
 
-The running track and rest countdown uses the 74-pixel native font, the closest available pre-rendered size to a 10% increase from the previous 64-pixel countdown. Timer digits use equal-width cells, so changing figures do not move the centered countdown or elapsed-time positions.
+The running track and rest countdown uses the 74-pixel native font, the closest available pre-rendered size to a 10% increase from the previous 64-pixel countdown. Timer digits use equal-width cells, so changing figures do not move the centered countdown, maximum-G, or elapsed-time positions.
 
 `font_data.py` and its flash-backed `font_data*.bin` glyph assets are generated from Montserrat SemiBold. The assets contain pre-rasterized native UI sizes, allowing the Pico to use its fast framebuffer blitter without holding the complete font in RAM. To regenerate them, install Pillow and run:
 
@@ -80,7 +80,7 @@ The generated font data is distributed under the SIL Open Font License 1.1 in `F
 
 ## Live display refresh
 
-Track and rest sessions poll stop gestures every 50 ms while comparing the complete visible frame (remaining time, elapsed time, font size, background, and text colour) with the previous frame. Track colour is interpolated from whole elapsed seconds, making the blend proportional to the selected duration while retaining a maximum of one normal full-screen transfer per displayed second. Touch-controller mode changes are also cached, so an unchanged gesture mode does not generate repeated I2C writes.
+Track and rest sessions poll stop gestures every 50 ms while comparing the complete visible frame (remaining time, elapsed time, maximum G, font size, background, and text colour) with the previous frame. Track colour is interpolated from whole elapsed seconds, making the blend proportional to the selected duration while retaining a maximum of one normal full-screen transfer per displayed second. Maximum G is sampled at that same bounded polling rate but its visible value is latched to the displayed second, so sensing does not add framebuffer transfers. Touch-controller mode changes are also cached, so an unchanged gesture mode does not generate repeated I2C writes.
 
 On the supported Waveshare board running MicroPython 1.21.0, five full live-screen redraws measured 56.2–65.4 ms. Input is therefore checked within 50 ms between redraws and within approximately 115 ms in the worst case when a gesture arrives immediately before a redraw. Five consecutive frames produced only the two register writes needed for the initial gesture-mode configuration and no rewrites on later frames.
 
@@ -101,7 +101,7 @@ python tools/convert_splash.py assets/startup_splash.gif startup_splash.rgb565 \
 
 Press and continuously hold the touchscreen for five seconds from the Timer Ready screen or G Mode to open the operating-mode menu. Releasing early cancels the hold. For safety, the menu cannot interrupt a running track/rest session or the Launch Mode wait. In menus, swipe left/right to choose, swipe up to select, and swipe down to cancel. The selected operating mode persists across restarts.
 
-* **Timer Mode** retains the existing track, rest, and Launch Mode workflow.
+* **Timer Mode** retains the existing track, rest, and Launch Mode workflow. During a track session, a baseline-corrected value such as `MAX  1.23  g` appears in a compact, clearly spaced line above the countdown. The peak resets for each track session and remains visible through overrun. `MAX --` indicates that acceleration data is unavailable; timing and the stop gesture continue normally. Rest sessions do not show maximum G.
 * **G Mode** calibrates the stationary QMI8658 baseline, then presents a responsive graphical round G meter rather than numeric telemetry. The green filled marker and short trail show the current filtered acceleration vector at the LCD's display-limited refresh rate. The red hollow marker records the maximum vector, while the red perimeter arc shows peak magnitude relative to the 4 g visual scale. Double-tap resets the trail and peak. Hold for five seconds to return to the mode menu.
 * **Settings** provides 25%, 50%, 75%, and 100% brightness choices with immediate preview. Rotation offers **Auto** plus fixed 0°, 90°, 180°, and 270° clockwise mounting angles. Auto uses the onboard IMU to keep the display upright as the device turns; fixed choices continue to work without the IMU. In every case, touch gestures remain relative to the text on screen. Swipe up saves a preview; swipe down cancels and restores the previous brightness or orientation. **Restore defaults** requires confirmation, then restores Timer Mode, 100% brightness, fixed 0° rotation, 20-minute track/rest sessions, and disabled Launch Mode.
 
@@ -180,7 +180,7 @@ The second command should identify an RP2040 MicroPython board.
 Run these commands from the repository root. Supporting files and font assets are copied first; `main.py` is installed last as the automatic entry point.
 
 ```sh
-mpremote connect auto fs cp application.py auto_rotation.py battery.py configuration.py font_data.py font_renderer.py g_meter.py hardware.py hardware_splash.py hold_detector.py launch.py lcd_1inch28.py live_display.py operating_modes.py orientation.py params.json qmi8658.py ready_screen.py settings.py splash.py timer_mode.py timing.py touch_drive.py font_data*.bin startup_splash.rgb565 :
+mpremote connect auto fs cp application.py auto_rotation.py battery.py configuration.py font_data.py font_renderer.py g_force.py g_meter.py hardware.py hardware_splash.py hold_detector.py launch.py lcd_1inch28.py live_display.py operating_modes.py orientation.py params.json qmi8658.py ready_screen.py settings.py splash.py timer_mode.py timing.py touch_drive.py font_data*.bin startup_splash.rgb565 :
 mpremote connect auto fs cp main.py :
 mpremote connect auto reset
 ```
@@ -204,7 +204,7 @@ If first boot fails:
 * An import error generally means a `.py` support module was omitted; repeat the upload command and keep `main.py` last.
 * No serial device after flashing usually indicates a charge-only USB cable, an incorrect UF2, or a board still in BOOT mode.
 * A touchscreen hardware error is a controlled stop: check that this is the supported integrated board, then restart it. The serial message includes the failed operation or unexpected chip ID.
-* An IMU hardware error disables Launch Mode for the current run. Swipe down to use the normal timer, which remains available without the IMU.
+* An IMU hardware error disables Launch Mode and the session maximum-G reading for the current run. Swipe down to use the normal timer; `MAX --` confirms that timing remains available without the IMU.
 
 ### Peripheral failure policy
 

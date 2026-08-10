@@ -88,6 +88,18 @@ class LaunchLoopTests(unittest.TestCase):
 
         self.assertTrue(result)
 
+    def test_precalibrated_baseline_is_reused_without_extra_sensor_reads(self):
+        launch = [sample(1.5, 0, 1)] * 3
+
+        result, sensor, _ = self.run_detector(
+            launch,
+            baseline=(0, 0, 1),
+            filter_alpha=1,
+        )
+
+        self.assertTrue(result)
+        self.assertEqual(3, sensor.read_count)
+
     def test_isolated_vibration_spikes_do_not_trigger(self):
         baseline = [sample(0, 0, 1)] * 4
         vibration_pattern = [

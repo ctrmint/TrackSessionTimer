@@ -4,6 +4,7 @@ import time
 
 from battery import BatteryMonitor
 from configuration import set_sensitivity, set_session
+from g_force import SessionGPeak, calibrate_baseline
 from hardware import PeripheralError
 from hold_detector import HoldDetector
 from launch import accel_launch
@@ -145,6 +146,37 @@ def run_timer_mode(
 
             time.sleep(0.05)
 
+        if qmi8658 is None:
+            qmi8658, imu_error = initialize_imu(1)
+            if auto_rotation is not None:
+                auto_rotation.set_sensor(qmi8658, imu_error)
+
+        sensitivity = configured_sensitivity if qmi8658 is not None else 0
+        session_baseline = None
+        session_g_peak = SessionGPeak()
+        if qmi8658 is not None:
+            touch.ControlScreen(
+                lcd,
+                text_array=[
+                    ["SESSION G", None, 52, 2, "white"],
+                    ["Calibrating", None, 105, 2, "white"],
+                    ["Keep device still", None, 150, 1, "white"],
+                ],
+                back_colour="black",
+            )
+            try:
+                session_baseline = calibrate_baseline(qmi8658)
+                session_g_peak = SessionGPeak(
+                    qmi8658,
+                    baseline=session_baseline,
+                )
+            except PeripheralError as error:
+                print("Session maximum G unavailable: {}".format(error))
+                qmi8658 = None
+                sensitivity = 0
+                if auto_rotation is not None:
+                    auto_rotation.set_sensor(None, error)
+
         if sensitivity > 0:
             touch.GoScreen(
                 lcd,
@@ -159,6 +191,7 @@ def run_timer_mode(
                 qmi8658,
                 sensitivity=sensitivity,
                 cancel_check=lambda: touch.StopGesture(lcd),
+                baseline=session_baseline,
             )
         except PeripheralError as error:
             qmi8658 = None
@@ -171,12 +204,31 @@ def run_timer_mode(
             print("Launch mode cancelled or timed out.")
             continue
 
+        def sample_session_g(_now):
+            nonlocal qmi8658
+            try:
+                session_g_peak.sample()
+            except PeripheralError as error:
+                print("Session maximum G paused: {}".format(error))
+                session_g_peak.disable()
+                qmi8658 = None
+                if auto_rotation is not None:
+                    auto_rotation.set_sensor(None, error)
+
         track_session.start_session()
         run_live_display(
             track_session,
-            frame_builder=lambda now: track_live_frame(track_session, now, lcd),
+            frame_builder=lambda now: track_live_frame(
+                track_session,
+                now,
+                lcd,
+                maximum_g=session_g_peak.display_label(
+                    now - track_session.start_time
+                ),
+            ),
             draw_frame=lambda frame: draw_live_frame(touch, lcd, frame),
             stop_check=lambda: touch.StopGesture(lcd),
+            sample_update=sample_session_g,
         )
 
         touch.ControlScreen(

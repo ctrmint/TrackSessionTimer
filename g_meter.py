@@ -3,6 +3,7 @@
 import math
 import time
 
+from g_force import FILTER_ALPHA, PlanarGState, calibrate_baseline
 from hold_detector import HoldDetector
 
 
@@ -12,10 +13,7 @@ PLOT_RADIUS = 72
 PEAK_ARC_RADIUS = 82
 PEAK_ARC_DOT_RADIUS = 2
 VISUAL_SCALE_G = 4.0
-FILTER_ALPHA = 0.60
 TRAIL_LENGTH = 6
-CALIBRATION_SAMPLES = 20
-CALIBRATION_INTERVAL_MS = 20
 FRAME_PERIOD_MS = 60
 
 
@@ -50,31 +48,6 @@ def remaining_frame_delay_ms(clock, frame_started, period_ms=FRAME_PERIOD_MS):
     return max(0, int(period_ms) - elapsed)
 
 
-def _axes(sample):
-    if len(sample) < 3:
-        raise ValueError("Accelerometer sample must contain x, y, and z axes")
-    return float(sample[0]), float(sample[1]), float(sample[2])
-
-
-def calibrate_baseline(
-    sensor,
-    samples=CALIBRATION_SAMPLES,
-    interval_ms=CALIBRATION_INTERVAL_MS,
-    clock=time,
-):
-    """Average stationary samples so gravity/mounting bias can be removed."""
-    if samples < 1:
-        raise ValueError("Calibration samples must be positive")
-    baseline = [0.0, 0.0, 0.0]
-    for _ in range(samples):
-        axes = _axes(sensor.Read_XYZ())
-        baseline[0] += axes[0]
-        baseline[1] += axes[1]
-        baseline[2] += axes[2]
-        _sleep_ms(clock, interval_ms)
-    return tuple(value / samples for value in baseline)
-
-
 def vector_point(
     vector,
     scale_g=VISUAL_SCALE_G,
@@ -99,7 +72,7 @@ def vector_point(
     )
 
 
-class GMeterState:
+class GMeterState(PlanarGState):
     """Bounded filtered live/peak state independent of display hardware."""
 
     def __init__(
@@ -109,49 +82,24 @@ class GMeterState:
         visual_scale_g=VISUAL_SCALE_G,
         trail_length=TRAIL_LENGTH,
     ):
-        alpha = float(filter_alpha)
-        if alpha <= 0 or alpha > 1:
-            raise ValueError("Filter alpha must be greater than 0 and at most 1")
+        super().__init__(baseline=baseline, filter_alpha=filter_alpha)
         if float(visual_scale_g) <= 0:
             raise ValueError("Visual scale must be greater than zero")
         if trail_length < 1:
             raise ValueError("Trail length must be positive")
-        self.baseline = tuple(float(value) for value in baseline[:3])
-        if len(self.baseline) != 3:
-            raise ValueError("Baseline must contain x, y, and z axes")
-        self.filter_alpha = alpha
         self.visual_scale_g = float(visual_scale_g)
         self.trail_length = int(trail_length)
-        self.current = (0.0, 0.0)
-        self.peak = (0.0, 0.0)
-        self.peak_magnitude = 0.0
         self.trail = []
 
     def update(self, sample):
-        x_axis, y_axis, _z_axis = _axes(sample)
-        target_x = x_axis - self.baseline[0]
-        target_y = y_axis - self.baseline[1]
-        filtered_x = self.current[0] + self.filter_alpha * (
-            target_x - self.current[0]
-        )
-        filtered_y = self.current[1] + self.filter_alpha * (
-            target_y - self.current[1]
-        )
-        self.current = (filtered_x, filtered_y)
-        magnitude = math.sqrt(
-            (filtered_x * filtered_x) + (filtered_y * filtered_y)
-        )
-        if magnitude > self.peak_magnitude:
-            self.peak_magnitude = magnitude
-            self.peak = self.current
+        super().update(sample)
         self.trail.append(self.current)
         if len(self.trail) > self.trail_length:
             del self.trail[0]
         return self.current
 
     def reset_peak(self):
-        self.peak = (0.0, 0.0)
-        self.peak_magnitude = 0.0
+        super().reset_peak()
         self.trail = []
 
 

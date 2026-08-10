@@ -15,6 +15,7 @@ TIMER_MODULES = (
     "hold_detector",
     "launch",
     "live_display",
+    "g_force",
     "ready_screen",
     "timing",
 )
@@ -265,7 +266,7 @@ def run_application(lcd):
             )
         except PeripheralError as error:
             del run_g_mode
-            _unload_modules(("g_meter", "hold_detector"))
+            _unload_modules(("g_meter", "g_force", "hold_detector"))
             if error.peripheral == "CST816T":
                 _show_touch_failure(lcd, error)
                 return False
@@ -278,7 +279,7 @@ def run_application(lcd):
             continue
 
         del run_g_mode
-        _unload_modules(("g_meter", "hold_detector"))
+        _unload_modules(("g_meter", "g_force", "hold_detector"))
         user_params, active_mode, qmi8658 = _open_mode_menu(
             touch,
             lcd,

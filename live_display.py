@@ -115,7 +115,7 @@ def _visible_times(session, now):
     )
 
 
-def track_live_frame(session, now, lcd):
+def track_live_frame(session, now, lcd, maximum_g=None):
     """Return the track timer with a smooth proportional colour gradient."""
     remaining, elapsed = _visible_times(session, now)
     if now >= session.end_time:
@@ -140,6 +140,7 @@ def track_live_frame(session, now, lcd):
         COUNTDOWN_TEXT_SIZE,
         background,
         text_colour,
+        maximum_g,
     )
 
 
@@ -154,12 +155,13 @@ def rest_live_frame(session, now, lcd):
         COUNTDOWN_TEXT_SIZE,
         lcd.blue,
         None,
+        None,
     )
 
 
 def draw_live_frame(touch, lcd, frame):
     """Render one frame tuple produced by a live-frame builder."""
-    remaining, elapsed, text_size, background, text_colour = frame
+    remaining, elapsed, text_size, background, text_colour, maximum_g = frame
     touch.LiveScreen(
         lcd,
         textsize_rem=text_size,
@@ -167,6 +169,7 @@ def draw_live_frame(touch, lcd, frame):
         textColour=text_colour,
         elapsed=elapsed,
         remaining=remaining,
+        maximum_g=maximum_g,
     )
 
 
@@ -177,6 +180,7 @@ def run_live_display(
     stop_check,
     clock=time,
     loop_delay_sec=LIVE_LOOP_DELAY_SEC,
+    sample_update=None,
 ):
     """Poll input at a bounded rate and redraw only when visible state changes."""
     if loop_delay_sec <= 0:
@@ -191,7 +195,10 @@ def run_live_display(
             session.live = False
             break
 
-        frame = frame_builder(clock.time())
+        now = clock.time()
+        if sample_update is not None:
+            sample_update(now)
+        frame = frame_builder(now)
         if frame is None:
             session.live = False
             break

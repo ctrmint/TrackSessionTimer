@@ -94,6 +94,49 @@ class TouchModeTests(unittest.TestCase):
         touch.Gestures = touch_drive.G_UP
         self.assertFalse(touch.ClearGesture(None))
 
+    def test_live_screen_places_smaller_maximum_g_clear_of_countdown(self):
+        class FakeLCD:
+            green = 1
+            white = 2
+
+            def __init__(self):
+                self.calls = []
+
+            def fill(self, colour):
+                self.calls.append(("fill", colour))
+
+            def write_time_centered(self, *args):
+                self.calls.append(("write_time_centered",) + args)
+
+            def show(self):
+                self.calls.append(("show",))
+
+        touch = self.make_touch()
+        lcd = FakeLCD()
+
+        touch.LiveScreen(
+            lcd,
+            textsize_rem=7,
+            backColour=lcd.green,
+            textColour=lcd.white,
+            elapsed="00:12",
+            remaining="19:48",
+            maximum_g="MAX  1.23  g",
+        )
+
+        text_calls = [
+            call for call in lcd.calls if call[0] == "write_time_centered"
+        ]
+        self.assertEqual(
+            [
+                ("write_time_centered", "MAX  1.23  g", 40, 2, lcd.white),
+                ("write_time_centered", "19:48", 82, 7, lcd.white),
+                ("write_time_centered", "00:12", 180, 3, lcd.white),
+            ],
+            text_calls,
+        )
+        self.assertEqual(("show",), lcd.calls[-1])
+
 
 if __name__ == "__main__":
     unittest.main()

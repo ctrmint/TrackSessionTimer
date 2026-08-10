@@ -13,6 +13,8 @@ G_LEFT = 0x03
 G_RIGHT = 0x04
 G_LONG_PRESS = 0x0C
 G_DOUBLE_CLIC = 0x0B
+MAXIMUM_G_Y = 40
+MAXIMUM_G_TEXT_SIZE = 2
 
 
 def _sleep_ms(clock, milliseconds):
@@ -326,7 +328,16 @@ class Touch_CST816T(object):
         self.Wait(LCD, 1)
 
 
-    def LiveScreen(self, LCD, textsize_rem=None, backColour=None, textColour=None, elapsed=None, remaining=None):
+    def LiveScreen(
+        self,
+        LCD,
+        textsize_rem=None,
+        backColour=None,
+        textColour=None,
+        elapsed=None,
+        remaining=None,
+        maximum_g=None,
+    ):
         self._update_auto_rotation(LCD, redraw=False)
         if remaining is None:
             remaining = "blank!"
@@ -340,8 +351,15 @@ class Touch_CST816T(object):
             textsize_rem = 5
         self.Set_Mode(0)
         LCD.fill(backColour)
-        LCD.write_time_centered(remaining,82,textsize_rem,textColour)
-        LCD.write_time_centered(elapsed,180,3,textColour)
+        if maximum_g is not None:
+            LCD.write_time_centered(
+                maximum_g,
+                MAXIMUM_G_Y,
+                MAXIMUM_G_TEXT_SIZE,
+                textColour,
+            )
+        LCD.write_time_centered(remaining, 82, textsize_rem, textColour)
+        LCD.write_time_centered(elapsed, 180, 3, textColour)
         LCD.show()
     
     
