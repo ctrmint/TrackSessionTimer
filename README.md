@@ -2,8 +2,15 @@
 Trackday or race session timer.
 
 # Change log
+## Unreleased
+* Added an interactive post-track review with a high-visibility page for actual duration, overrun, completion reason, total maximum G, and each directional acceleration/braking/left/right peak.
+* Added left/right review navigation and prevented cool-down from starting until every result page has been reached and the final page is advanced.
+* Kept summary data in bounded RAM only; no session history is written to flash in this increment.
+* Retained captured peaks as explicitly partial data if the IMU fails during a session, while normal timing continues.
+* Expanded hardware-independent regression coverage to 165 tests.
+
 ## Version 4.2
-### v4.2.0 [current]
+### v4.2.0
 * Added continuous automatic orientation using the onboard IMU, with display rendering and touch gestures rotating together.
 * Kept Auto rotation safe during active timing and retained normal Timer operation if the IMU is unavailable.
 * Replaced abrupt track-session warning backgrounds with a smooth, duration-proportional green, yellow, amber, and red gradient.
@@ -101,7 +108,7 @@ python tools/convert_splash.py assets/startup_splash.gif startup_splash.rgb565 \
 
 Press and continuously hold the touchscreen for five seconds from the Timer Ready screen or G Mode to open the operating-mode menu. Releasing early cancels the hold. For safety, the menu cannot interrupt a running track/rest session or the Launch Mode wait. In menus, swipe left/right to choose, swipe up to select, and swipe down to cancel. The selected operating mode persists across restarts.
 
-* **Timer Mode** retains the existing track, rest, and Launch Mode workflow. During a track session, a baseline-corrected value such as `MAX  1.23  g` appears in a compact, clearly spaced line above the countdown. The peak resets for each track session and remains visible through overrun. `MAX --` indicates that acceleration data is unavailable; timing and the stop gesture continue normally. Rest sessions do not show maximum G.
+* **Timer Mode** retains the existing track, rest, and Launch Mode workflow. During a track session, a baseline-corrected value such as `MAX  1.23  g` appears in a compact, clearly spaced line above the countdown. The peak resets for each track session and remains visible through overrun. `MAX --` indicates that acceleration data is unavailable; timing and the stop gesture continue normally. After a double-tap stop, an interactive review gives actual duration, overrun, total maximum G, acceleration, braking, left G, right G, and the completion reason their own high-visibility screens. Swipe left to advance and right to go back; cool-down begins only after swiping left from the eighth and final page. The review is held in RAM only and is not retained after leaving it. Rest sessions do not show maximum G.
 * **G Mode** calibrates the stationary QMI8658 baseline, then presents a responsive graphical round G meter rather than numeric telemetry. The green filled marker and short trail show the current filtered acceleration vector at the LCD's display-limited refresh rate. The red hollow marker records the maximum vector, while the red perimeter arc shows peak magnitude relative to the 4 g visual scale. Double-tap resets the trail and peak. Hold for five seconds to return to the mode menu.
 * **Settings** provides 25%, 50%, 75%, and 100% brightness choices with immediate preview. Rotation offers **Auto** plus fixed 0°, 90°, 180°, and 270° clockwise mounting angles. Auto uses the onboard IMU to keep the display upright as the device turns; fixed choices continue to work without the IMU. In every case, touch gestures remain relative to the text on screen. Swipe up saves a preview; swipe down cancels and restores the previous brightness or orientation. **Restore defaults** requires confirmation, then restores Timer Mode, 100% brightness, fixed 0° rotation, 20-minute track/rest sessions, and disabled Launch Mode.
 
@@ -180,7 +187,7 @@ The second command should identify an RP2040 MicroPython board.
 Run these commands from the repository root. Supporting files and font assets are copied first; `main.py` is installed last as the automatic entry point.
 
 ```sh
-mpremote connect auto fs cp application.py auto_rotation.py battery.py configuration.py font_data.py font_renderer.py g_force.py g_meter.py hardware.py hardware_splash.py hold_detector.py launch.py lcd_1inch28.py live_display.py operating_modes.py orientation.py params.json qmi8658.py ready_screen.py settings.py splash.py timer_mode.py timing.py touch_drive.py font_data*.bin startup_splash.rgb565 :
+mpremote connect auto fs cp application.py auto_rotation.py battery.py configuration.py font_data.py font_renderer.py g_force.py g_meter.py hardware.py hardware_splash.py hold_detector.py launch.py lcd_1inch28.py live_display.py operating_modes.py orientation.py params.json qmi8658.py ready_screen.py session_summary.py settings.py splash.py timer_mode.py timing.py touch_drive.py font_data*.bin startup_splash.rgb565 :
 mpremote connect auto fs cp main.py :
 mpremote connect auto reset
 ```
@@ -220,6 +227,8 @@ Version 4.2.0 uses two separate configuration scopes:
 * `user.json` contains the current user selections: `RACE_LENGTH` (track-session minutes), `REST_LENGTH` (pit-rest minutes), `SENSITIVITY` (launch threshold; `0` disables Launch Mode), `OPERATING_MODE` (`timer` or `g`), `BRIGHTNESS_PERCENT`, and `DISPLAY_ROTATION_DEG` (`auto` or the fixed clockwise device mounting angle `0`, `90`, `180`, or `270`).
 
 Launch sensitivity is the filtered change in acceleration-vector magnitude from a 0.4-second stationary baseline, measured in g. This removes gravity and mounting orientation and handles acceleration on either side of every axis. Lower non-zero values are more sensitive. Detection requires three consecutive samples above the threshold; double-tap cancels the wait, and a 30-second timeout returns to the Ready screen. See `User Guide.md` for the practical meaning of every configured value.
+
+Directional summary labels use a dashboard mounting convention: the screen faces the driver, the screen-normal axis represents acceleration/braking, and the viewer-horizontal axis represents left/right. Fixed and automatic quarter-turn display rotations are applied to the lateral mapping. Mounting the board with its screen facing away from the driver reverses the longitudinal labels.
 
 The firmware has built-in system and user defaults. Missing, malformed, or unsupported user values are replaced with safe defaults and saved using the canonical keys above. Existing `TRACK_LENGTH`, `TRACK_SESSION_LENGTH`, and `REST_SESSION_LENGTH` user keys are migrated automatically, while older files gain Timer Mode, 100% brightness, and 0° rotation defaults.
 

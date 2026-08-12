@@ -1,7 +1,12 @@
 import math
 import unittest
 
-from g_force import MAX_G_UNAVAILABLE, PlanarGState, SessionGPeak
+from g_force import (
+    MAX_G_UNAVAILABLE,
+    PlanarGState,
+    SessionGPeak,
+    screen_horizontal_g,
+)
 
 
 class FakeSensor:
@@ -72,7 +77,48 @@ class GForceTests(unittest.TestCase):
         state.update((0.0, 0.0, 1.0))
 
         self.assertEqual(0.0, state.peak_magnitude)
+        self.assertEqual(1.0, state.total_peak_magnitude)
         self.assertFalse(math.isnan(state.peak_magnitude))
+
+    def test_session_retains_total_and_directional_peaks(self):
+        sensor = FakeSensor(
+            [
+                (2.0, 0.0, 3.0),
+                (-4.0, 0.0, -5.0),
+            ]
+        )
+        peak = SessionGPeak(sensor)
+        peak.state.filter_alpha = 1
+
+        peak.sample(rotation=0)
+        peak.sample(rotation=0)
+
+        self.assertAlmostEqual(math.sqrt(41), peak.total_peak_magnitude)
+        self.assertEqual(3.0, peak.max_acceleration_g)
+        self.assertEqual(5.0, peak.max_braking_g)
+        self.assertEqual(4.0, peak.max_left_g)
+        self.assertEqual(2.0, peak.max_right_g)
+        self.assertTrue(peak.metrics_available)
+
+    def test_directional_peaks_survive_late_sensor_failure(self):
+        peak = SessionGPeak(FakeSensor([(1.0, 0.0, 2.0)]))
+        peak.state.filter_alpha = 1
+        peak.sample()
+
+        peak.disable()
+
+        self.assertFalse(peak.available)
+        self.assertTrue(peak.metrics_available)
+        self.assertEqual(2.0, peak.max_acceleration_g)
+        self.assertAlmostEqual(math.sqrt(5), peak.total_peak_magnitude)
+
+    def test_screen_horizontal_axis_follows_mount_rotation(self):
+        axes = (2.0, 3.0, 0.0)
+
+        self.assertEqual(2.0, screen_horizontal_g(axes, 0))
+        self.assertEqual(-3.0, screen_horizontal_g(axes, 90))
+        self.assertEqual(-2.0, screen_horizontal_g(axes, 180))
+        self.assertEqual(3.0, screen_horizontal_g(axes, 270))
 
 
 if __name__ == "__main__":

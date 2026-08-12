@@ -67,6 +67,7 @@ def accel_launch(
     filter_alpha=FILTER_ALPHA,
     trigger_samples=TRIGGER_SAMPLES,
     baseline=None,
+    sample_update=None,
 ):
     """Wait for a sustained acceleration-vector change and return its outcome.
 
@@ -112,6 +113,8 @@ def accel_launch(
             return False
 
         axes = _acceleration(qmi8658.Read_XYZ())
+        if sample_update is not None:
+            sample_update(axes)
         for index in range(3):
             delta = axes[index] - baseline[index]
             filtered[index] += filter_alpha * (delta - filtered[index])
