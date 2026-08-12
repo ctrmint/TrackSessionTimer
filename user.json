@@ -4,5 +4,6 @@
     "REST_LENGTH": 10,
     "OPERATING_MODE": "timer",
     "BRIGHTNESS_PERCENT": 100,
-    "DISPLAY_ROTATION_DEG": 0
+    "DISPLAY_ROTATION_DEG": 0,
+    "AUTO_DIM_ENABLED": false
     }

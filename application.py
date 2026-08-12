@@ -11,6 +11,7 @@ MODE_G = "g"
 
 TIMER_MODULES = (
     "timer_mode",
+    "auto_dim",
     "configuration",
     "hold_detector",
     "launch",
@@ -69,6 +70,21 @@ def _show_auto_rotation_degraded(lcd, error, launch_disabled=False):
     )
 
 
+def _show_auto_dim_degraded(lcd, error, launch_disabled=False):
+    from hardware import show_hardware_message
+
+    print("Ready Auto-Dim unavailable: {}".format(error))
+    middle_line = (
+        "Launch also disabled" if launch_disabled else "Normal timer works"
+    )
+    show_hardware_message(
+        lcd,
+        "Auto-Dim paused",
+        ["IMU not available", middle_line, "Normal brightness"],
+        background=lcd.brown,
+    )
+
+
 def _show_g_mode_unavailable(lcd, error):
     from hardware import show_hardware_message
 
@@ -86,6 +102,18 @@ def _initialize_imu(sensitivity):
     from qmi8658 import QMI8658
 
     return initialize_optional_imu(sensitivity, QMI8658)
+
+
+def required_imu_sensitivity(user_params, active_mode, rotation_setting):
+    """Return effective initialization demand for all IMU-backed features."""
+    requirement = user_params["SENSITIVITY"]
+    if (
+        active_mode == MODE_G
+        or rotation_setting == "auto"
+        or user_params["AUTO_DIM_ENABLED"]
+    ) and requirement <= 0:
+        return 1
+    return requirement
 
 
 def _open_mode_menu(touch, lcd, user_params, auto_rotation):
@@ -146,12 +174,11 @@ def run_application(lcd):
         )
 
         active_mode = user_params["OPERATING_MODE"]
-        imu_requirement = user_params["SENSITIVITY"]
-        if (
-            active_mode == MODE_G
-            or rotation_setting == AUTO_ROTATION
-        ) and imu_requirement <= 0:
-            imu_requirement = 1
+        imu_requirement = required_imu_sensitivity(
+            user_params,
+            active_mode,
+            rotation_setting,
+        )
         qmi8658, imu_error = _initialize_imu(imu_requirement)
 
         auto_rotation = AutoRotationController(
@@ -208,6 +235,12 @@ def run_application(lcd):
                 imu_error,
                 launch_disabled=user_params["SENSITIVITY"] > 0,
             )
+        elif user_params["AUTO_DIM_ENABLED"]:
+            _show_auto_dim_degraded(
+                lcd,
+                imu_error,
+                launch_disabled=user_params["SENSITIVITY"] > 0,
+            )
         else:
             _show_imu_degraded(lcd, imu_error)
         touch.Wait(lcd, 2)
@@ -229,6 +262,7 @@ def run_application(lcd):
                     qmi8658,
                     _initialize_imu,
                     _show_imu_degraded,
+                    _show_auto_dim_degraded,
                     auto_rotation,
                 )
             except PeripheralError as error:

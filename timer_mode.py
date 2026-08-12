@@ -2,6 +2,7 @@
 
 import time
 
+from auto_dim import ReadyAutoDim
 from battery import BatteryMonitor
 from configuration import set_sensitivity, set_session
 from g_force import SessionGPeak, calibrate_baseline
@@ -34,6 +35,7 @@ def run_timer_mode(
     qmi8658,
     initialize_imu,
     show_imu_degraded,
+    show_auto_dim_degraded,
     auto_rotation=None,
 ):
     """Run complete timer sessions until a safe Ready-screen hold requests menu."""
@@ -43,6 +45,27 @@ def run_timer_mode(
     display_delay_rest = system_params["DISPLAY_DELAY_REST"]
     display_delay_rest_colour = system_params["DISPLAY_DELAY_REST_COLOUR"]
     battery_monitor = BatteryMonitor()
+    auto_dim_enabled = user_params["AUTO_DIM_ENABLED"]
+
+    if auto_dim_enabled and qmi8658 is None:
+        qmi8658, imu_error = initialize_imu(1)
+        if auto_rotation is not None:
+            auto_rotation.set_sensor(qmi8658, imu_error)
+        if imu_error is not None:
+            show_auto_dim_degraded(
+                lcd,
+                imu_error,
+                launch_disabled=user_params["SENSITIVITY"] > 0,
+            )
+            touch.Wait(lcd, 2)
+
+    ready_auto_dim = ReadyAutoDim(
+        lcd,
+        sensor=qmi8658,
+        enabled=auto_dim_enabled,
+        normal_percent=user_params["BRIGHTNESS_PERCENT"],
+        dim_percent=system_params["AUTO_DIM_PERCENT"],
+    )
 
     while True:
         configured_sensitivity = user_params["SENSITIVITY"]
@@ -60,6 +83,8 @@ def run_timer_mode(
             debug=True,
         )
 
+        ready_auto_dim.set_sensor(qmi8658)
+        ready_auto_dim.enter_ready()
         while not launch:
             if ready_screen_dirty:
                 draw_ready_screen(
@@ -74,13 +99,32 @@ def run_timer_mode(
                 )
                 ready_screen_dirty = False
 
+            try:
+                ready_auto_dim.update()
+            except PeripheralError as error:
+                print("Ready Auto-Dim paused: {}".format(error))
+                ready_auto_dim.disable_sensor()
+                qmi8658 = None
+                sensitivity = 0
+                if auto_rotation is not None:
+                    auto_rotation.set_sensor(None, error)
+                show_auto_dim_degraded(
+                    lcd,
+                    error,
+                    launch_disabled=configured_sensitivity > 0,
+                )
+                touch.Wait(lcd, 2)
+                ready_screen_dirty = True
+
             if hold_detector.update(touch.IsPressed(lcd)):
+                ready_auto_dim.leave_ready()
                 touch.ClearPendingInput()
                 return user_params, qmi8658
 
             gesture = touch.GetGesture(lcd, debounce_time=0.05)
 
             if gesture == "left":
+                ready_auto_dim.leave_ready()
                 race_length = set_session(
                     LCD=lcd,
                     Touch=touch,
@@ -96,8 +140,10 @@ def run_timer_mode(
                     race_length,
                 )
                 ready_screen_dirty = True
+                ready_auto_dim.enter_ready()
                 hold_detector.reset()
             elif gesture == "right":
+                ready_auto_dim.leave_ready()
                 rest_length = set_session(
                     LCD=lcd,
                     Touch=touch,
@@ -113,8 +159,10 @@ def run_timer_mode(
                     rest_length,
                 )
                 ready_screen_dirty = True
+                ready_auto_dim.enter_ready()
                 hold_detector.reset()
             elif gesture == "up":
+                ready_auto_dim.leave_ready()
                 configured_sensitivity = set_sensitivity(
                     LCD=lcd,
                     Touch=touch,
@@ -139,9 +187,12 @@ def run_timer_mode(
                 sensitivity = (
                     configured_sensitivity if qmi8658 is not None else 0
                 )
+                ready_auto_dim.set_sensor(qmi8658)
                 ready_screen_dirty = True
+                ready_auto_dim.enter_ready()
                 hold_detector.reset()
             elif gesture == "down":
+                ready_auto_dim.leave_ready()
                 print("Timer go!")
                 launch = True
 
