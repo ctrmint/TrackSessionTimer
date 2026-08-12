@@ -13,6 +13,7 @@ from settings import (
     load_configuration,
     normalize_user_params,
     persist_setting,
+    persist_settings,
     restore_user_defaults,
     update_json,
     validate_system_params,
@@ -48,6 +49,28 @@ class SettingsTests(unittest.TestCase):
         )
         self.assertFalse(saved)
         self.assertIs(settings, updated)
+
+    def test_multiple_settings_are_persisted_atomically(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = os.path.join(directory, "user.json")
+            settings = dict(DEFAULT_USER_PARAMS)
+
+            updated, saved = persist_settings(
+                path,
+                settings,
+                {
+                    "AVG_LAP_TIME_SECONDS": 90,
+                    "TRACK_LOWER_DISPLAY": "laps_remaining",
+                },
+                debug=False,
+            )
+
+            self.assertTrue(saved)
+            self.assertEqual(90, updated["AVG_LAP_TIME_SECONDS"])
+            self.assertEqual(
+                "laps_remaining",
+                file_in(path, debug=False)["TRACK_LOWER_DISPLAY"],
+            )
 
     def test_serialization_failure_preserves_existing_file(self):
         with tempfile.TemporaryDirectory() as directory:
@@ -210,6 +233,7 @@ class SettingsTests(unittest.TestCase):
                 "DISPLAY_ROTATION_DEG": 0,
                 "AUTO_DIM_ENABLED": False,
                 "AVG_LAP_TIME_SECONDS": 0,
+                "TRACK_LOWER_DISPLAY": "elapsed",
             },
             normalized,
         )
@@ -226,6 +250,7 @@ class SettingsTests(unittest.TestCase):
         self.assertEqual(0, normalized["DISPLAY_ROTATION_DEG"])
         self.assertFalse(normalized["AUTO_DIM_ENABLED"])
         self.assertEqual(0, normalized["AVG_LAP_TIME_SECONDS"])
+        self.assertEqual("elapsed", normalized["TRACK_LOWER_DISPLAY"])
 
     def test_invalid_mode_and_brightness_use_defaults(self):
         invalid = dict(DEFAULT_USER_PARAMS)
@@ -286,6 +311,45 @@ class SettingsTests(unittest.TestCase):
                 )
                 self.assertTrue(changed)
                 self.assertEqual(0, normalized["AVG_LAP_TIME_SECONDS"])
+
+    def test_laps_remaining_display_requires_a_configured_average(self):
+        user = dict(DEFAULT_USER_PARAMS)
+        user["AVG_LAP_TIME_SECONDS"] = 90
+        user["TRACK_LOWER_DISPLAY"] = "laps_remaining"
+
+        normalized, changed = normalize_user_params(
+            user,
+            DEFAULT_SYSTEM_PARAMS,
+        )
+
+        self.assertFalse(changed)
+        self.assertEqual(
+            "laps_remaining",
+            normalized["TRACK_LOWER_DISPLAY"],
+        )
+
+        for average in (0, -1):
+            with self.subTest(average=average):
+                user["AVG_LAP_TIME_SECONDS"] = average
+                normalized, changed = normalize_user_params(
+                    user,
+                    DEFAULT_SYSTEM_PARAMS,
+                )
+                self.assertTrue(changed)
+                self.assertEqual("elapsed", normalized["TRACK_LOWER_DISPLAY"])
+
+    def test_invalid_lower_display_values_use_elapsed_default(self):
+        for invalid in (None, True, "laps", "count_up", 1):
+            with self.subTest(invalid=invalid):
+                user = dict(DEFAULT_USER_PARAMS)
+                user["AVG_LAP_TIME_SECONDS"] = 90
+                user["TRACK_LOWER_DISPLAY"] = invalid
+                normalized, changed = normalize_user_params(
+                    user,
+                    DEFAULT_SYSTEM_PARAMS,
+                )
+                self.assertTrue(changed)
+                self.assertEqual("elapsed", normalized["TRACK_LOWER_DISPLAY"])
 
     def test_rotation_accepts_auto_and_four_angles(self):
         for rotation in (0, 90, 180, 270, "auto"):

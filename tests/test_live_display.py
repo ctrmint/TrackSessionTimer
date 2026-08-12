@@ -9,6 +9,7 @@ from live_display import (
     TRACK_OVERRUN_PURPLE_RGB,
     TRACK_RED_RGB,
     TRACK_YELLOW_RGB,
+    estimated_laps_display,
     high_contrast_text_colour,
     interpolate_rgb,
     rest_live_frame,
@@ -86,6 +87,35 @@ class LiveDisplayTests(unittest.TestCase):
             self.assertLessEqual(text_width, visible_width)
 
         self.assertLess(y_position + text_height, 82)
+
+    def test_lap_label_and_enlarged_value_fit_without_touching_countdown(self):
+        display_radius = 120
+        countdown_bottom = 82 + pixel_height(COUNTDOWN_TEXT_SIZE)
+        elements = (
+            ("LAP", 160, 1),
+            ("3600", 176, 4),
+        )
+
+        self.assertGreaterEqual(elements[0][1], countdown_bottom)
+        for text, y_position, size in elements:
+            text_height = pixel_height(size)
+            text_width = measure_text(text, size, tabular_digits=True)
+            for edge_y in (y_position, y_position + text_height - 1):
+                distance_from_center = edge_y - display_radius
+                visible_width = 2 * math.sqrt(
+                    (display_radius ** 2) - (distance_from_center ** 2)
+                )
+                self.assertLessEqual(text_width, visible_width)
+
+    def test_lap_estimate_divides_remaining_time_and_uses_bounded_precision(self):
+        self.assertEqual(("LAP", "1.7"), estimated_laps_display(100, 60))
+        self.assertEqual(("LAP", "99.9"), estimated_laps_display(5994, 60))
+        self.assertEqual(("LAP", "101"), estimated_laps_display(6030, 60))
+        self.assertEqual(("LAP", "0.0"), estimated_laps_display(-1, 60))
+
+        for invalid in (0, -1, True, 60.0, None, "60"):
+            with self.subTest(invalid=invalid):
+                self.assertIsNone(estimated_laps_display(100, invalid))
 
     def test_simulated_session_redraws_at_most_once_per_visible_second(self):
         clock = FakeClock()
@@ -315,6 +345,44 @@ class LiveDisplayTests(unittest.TestCase):
         self.assertEqual("MAX  0.00  g", start[5])
         self.assertEqual("MAX  2.34  g", overrun[5])
 
+    def test_track_frame_can_replace_elapsed_time_with_laps_remaining(self):
+        lcd = FakeLCD()
+        session = SessionTracker(duration_mins=10, clock=lambda: 100)
+        session.start_session()
+
+        active = track_live_frame(
+            session,
+            100,
+            lcd,
+            lower_display="laps_remaining",
+            avg_lap_time_seconds=90,
+        )
+        overrun = track_live_frame(
+            session,
+            700,
+            lcd,
+            lower_display="laps_remaining",
+            avg_lap_time_seconds=90,
+        )
+
+        self.assertEqual(("LAP", "6.7"), active[1])
+        self.assertEqual(("LAP", "0.0"), overrun[1])
+
+    def test_unavailable_lap_estimate_falls_back_to_elapsed_time(self):
+        lcd = FakeLCD()
+        session = SessionTracker(duration_mins=10, clock=lambda: 100)
+        session.start_session()
+
+        frame = track_live_frame(
+            session,
+            112,
+            lcd,
+            lower_display="laps_remaining",
+            avg_lap_time_seconds=0,
+        )
+
+        self.assertEqual("00:12", frame[1])
+
     def test_rest_frame_uses_larger_countdown_size(self):
         lcd = FakeLCD()
         session = SessionTracker(duration_mins=10, clock=lambda: 100)
@@ -323,6 +391,7 @@ class LiveDisplayTests(unittest.TestCase):
         frame = rest_live_frame(session, 100, lcd)
 
         self.assertEqual(COUNTDOWN_TEXT_SIZE, frame[2])
+        self.assertEqual("00:00", frame[1])
         self.assertIsNone(frame[5])
 
     def test_loop_delay_must_be_bounded(self):

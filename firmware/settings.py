@@ -29,12 +29,14 @@ DEFAULT_USER_PARAMS = {
     "DISPLAY_ROTATION_DEG": 0,
     "AUTO_DIM_ENABLED": False,
     "AVG_LAP_TIME_SECONDS": 0,
+    "TRACK_LOWER_DISPLAY": "elapsed",
 }
 
 OPERATING_MODES = ("timer", "g")
 BRIGHTNESS_VALUES = (25, 50, 75, 100)
 DISPLAY_ROTATION_VALUES = (0, 90, 180, 270, "auto")
 MAX_AVG_LAP_TIME_SECONDS = (60 * 60) - 1
+TRACK_LOWER_DISPLAY_VALUES = ("elapsed", "laps_remaining")
 
 LEGACY_USER_KEYS = {
     "TRACK_LENGTH": "RACE_LENGTH",
@@ -192,6 +194,17 @@ def normalize_user_params(data, system_params=None):
         or avg_lap_time_seconds < 0
         or avg_lap_time_seconds > MAX_AVG_LAP_TIME_SECONDS
     )
+    track_lower_display = migrated.get(
+        "TRACK_LOWER_DISPLAY",
+        DEFAULT_USER_PARAMS["TRACK_LOWER_DISPLAY"],
+    )
+    track_lower_display_invalid = (
+        track_lower_display not in TRACK_LOWER_DISPLAY_VALUES
+        or (
+            avg_lap_time_seconds == 0
+            and track_lower_display != DEFAULT_USER_PARAMS["TRACK_LOWER_DISPLAY"]
+        )
+    )
 
     if (
         not isinstance(race_length, int)
@@ -224,6 +237,8 @@ def normalize_user_params(data, system_params=None):
         auto_dim_enabled = DEFAULT_USER_PARAMS["AUTO_DIM_ENABLED"]
     if avg_lap_time_invalid:
         avg_lap_time_seconds = DEFAULT_USER_PARAMS["AVG_LAP_TIME_SECONDS"]
+    if track_lower_display_invalid or avg_lap_time_seconds == 0:
+        track_lower_display = DEFAULT_USER_PARAMS["TRACK_LOWER_DISPLAY"]
 
     normalized = {
         "SENSITIVITY": sensitivity,
@@ -234,10 +249,14 @@ def normalize_user_params(data, system_params=None):
         "DISPLAY_ROTATION_DEG": display_rotation,
         "AUTO_DIM_ENABLED": auto_dim_enabled,
         "AVG_LAP_TIME_SECONDS": avg_lap_time_seconds,
+        "TRACK_LOWER_DISPLAY": track_lower_display,
     }
     return (
         normalized,
-        auto_dim_invalid or avg_lap_time_invalid or normalized != source,
+        auto_dim_invalid
+        or avg_lap_time_invalid
+        or track_lower_display_invalid
+        or normalized != source,
     )
 
 
@@ -336,12 +355,33 @@ def update_json(json_data=None, key=None, value=None):
     return updated
 
 
-def persist_setting(file, json_data, key, value, debug=True):
-    """Persist one setting and retain the known-good dictionary on failure."""
-    updated = update_json(json_data, key, value)
-    if updated is None or not file_out(file, updated, debug=debug):
+def persist_settings(file, json_data, updates, debug=True):
+    """Atomically persist multiple settings as one configuration update."""
+    if (
+        not isinstance(json_data, dict)
+        or not isinstance(updates, dict)
+        or not updates
+        or any(
+            key is None or key == "" or value is None
+            for key, value in updates.items()
+        )
+    ):
+        return json_data, False
+    updated = dict(json_data)
+    updated.update(updates)
+    if not file_out(file, updated, debug=debug):
         return json_data, False
     return updated, True
+
+
+def persist_setting(file, json_data, key, value, debug=True):
+    """Persist one setting and retain the known-good dictionary on failure."""
+    return persist_settings(
+        file,
+        json_data,
+        {key: value},
+        debug=debug,
+    )
 
 
 def restore_user_defaults(file, debug=True):
