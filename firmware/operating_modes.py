@@ -7,7 +7,9 @@ from settings import (
     DISPLAY_ROTATION_VALUES,
     MAX_AVG_LAP_TIME_SECONDS,
     OPERATING_MODES,
+    TRACK_LOWER_DISPLAY_VALUES,
     persist_setting,
+    persist_settings,
     restore_user_defaults,
 )
 
@@ -27,6 +29,7 @@ SETTINGS_CHOICES = (
     ("Rotation", "rotation"),
     ("Auto-Dim", "auto_dim"),
     ("Avg Lap Time", "avg_lap_time"),
+    ("Lower Display", "lower_display"),
     ("Restore defaults", "restore"),
     ("Back", "back"),
 )
@@ -66,9 +69,22 @@ def mode_menu_lines(index):
     return _selection_lines("Operating Mode", label, position)
 
 
-def settings_menu_lines(index):
-    label = SETTINGS_CHOICES[index][0]
-    position = "{} / {}".format(index + 1, len(SETTINGS_CHOICES))
+def available_settings_choices(avg_lap_time_seconds):
+    """Hide the lap-dependent display choice until lap time is configured."""
+    if (
+        isinstance(avg_lap_time_seconds, int)
+        and not isinstance(avg_lap_time_seconds, bool)
+        and avg_lap_time_seconds > 0
+    ):
+        return SETTINGS_CHOICES
+    return tuple(
+        choice for choice in SETTINGS_CHOICES if choice[1] != "lower_display"
+    )
+
+
+def settings_menu_lines(index, choices=SETTINGS_CHOICES):
+    label = choices[index][0]
+    position = "{} / {}".format(index + 1, len(choices))
     return _selection_lines("Settings", label, position, label_size=2)
 
 
@@ -107,12 +123,13 @@ def select_operating_mode(touch, lcd, current_mode):
     )
 
 
-def select_settings_action(touch, lcd):
+def select_settings_action(touch, lcd, avg_lap_time_seconds=0):
+    choices = available_settings_choices(avg_lap_time_seconds)
     return _select_choice(
         touch,
         lcd,
-        SETTINGS_CHOICES,
-        settings_menu_lines,
+        choices,
+        lambda index: settings_menu_lines(index, choices),
     )
 
 
@@ -264,6 +281,46 @@ def select_avg_lap_time(touch, lcd, current):
             return original, False
 
 
+def lower_display_lines(value):
+    label = "LAPS LEFT" if value == "laps_remaining" else "COUNT UP"
+    return [
+        ["Lower Display", None, 35, 2, "white"],
+        [label, None, 88, 3, "white"],
+        ["Track sessions", None, 150, 1, "white"],
+        ["L/R: change", None, 180, 1, "white"],
+        ["UP: save", None, 202, 1, "white"],
+        ["DOWN: cancel", None, 220, 1, "white"],
+    ]
+
+
+def select_lower_display(touch, lcd, current):
+    """Select the running track screen's lower-line content."""
+    values = TRACK_LOWER_DISPLAY_VALUES
+    try:
+        index = values.index(current)
+    except ValueError:
+        index = values.index(DEFAULT_USER_PARAMS["TRACK_LOWER_DISPLAY"])
+    original = values[index]
+
+    def draw():
+        touch.ControlScreen(
+            lcd,
+            text_array=lower_display_lines(values[index]),
+            back_colour="black",
+        )
+
+    draw()
+    while True:
+        gesture = touch.GetGesture(lcd)
+        if gesture in ("left", "right"):
+            index = 1 - index
+            draw()
+        elif gesture == "up":
+            return values[index], True
+        elif gesture == "down":
+            return original, False
+
+
 def apply_rotation(lcd, touch, degrees, auto_rotation=None):
     """Apply one mount angle to rendering and directional gestures."""
     if degrees == AUTO_ROTATION:
@@ -397,7 +454,11 @@ def _run_settings(
     auto_rotation=None,
 ):
     while True:
-        action = select_settings_action(touch, lcd)
+        action = select_settings_action(
+            touch,
+            lcd,
+            user_params["AVG_LAP_TIME_SECONDS"],
+        )
         if action is None or action == "back":
             return user_params, False
 
@@ -466,10 +527,32 @@ def _run_settings(
             )
             if not should_save:
                 continue
+            updates = {"AVG_LAP_TIME_SECONDS": selected}
+            if selected == 0:
+                updates["TRACK_LOWER_DISPLAY"] = DEFAULT_USER_PARAMS[
+                    "TRACK_LOWER_DISPLAY"
+                ]
+            updated, saved = persist_settings(
+                user_file,
+                user_params,
+                updates,
+            )
+            if saved:
+                user_params = updated
+
+        elif action == "lower_display":
+            previous = user_params["TRACK_LOWER_DISPLAY"]
+            selected, should_save = select_lower_display(
+                touch,
+                lcd,
+                previous,
+            )
+            if not should_save:
+                continue
             updated, saved = persist_setting(
                 user_file,
                 user_params,
-                "AVG_LAP_TIME_SECONDS",
+                "TRACK_LOWER_DISPLAY",
                 selected,
             )
             if saved:

@@ -6,5 +6,6 @@
     "BRIGHTNESS_PERCENT": 100,
     "DISPLAY_ROTATION_DEG": 0,
     "AUTO_DIM_ENABLED": false,
-    "AVG_LAP_TIME_SECONDS": 0
+    "AVG_LAP_TIME_SECONDS": 0,
+    "TRACK_LOWER_DISPLAY": "elapsed"
     }

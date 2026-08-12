@@ -8,6 +8,7 @@ from hold_detector import HoldDetector
 from operating_modes import (
     SETTINGS_CHOICES,
     apply_brightness,
+    available_settings_choices,
     avg_lap_time_lines,
     auto_dim_lines,
     brightness_duty,
@@ -15,12 +16,14 @@ from operating_modes import (
     confirm_restore_defaults,
     configure_operating_mode,
     format_avg_lap_time,
+    lower_display_lines,
     mode_menu_lines,
     restore_confirmation_lines,
     rotation_lines,
     select_brightness,
     select_avg_lap_time,
     select_auto_dim,
+    select_lower_display,
     select_operating_mode,
     select_rotation,
     settings_menu_lines,
@@ -181,6 +184,8 @@ class OperatingModeTests(unittest.TestCase):
                 self.assert_round_fit(
                     avg_lap_time_lines(3599, component)
                 )
+            for value in ("elapsed", "laps_remaining"):
+                self.assert_round_fit(lower_display_lines(value))
             self.assert_round_fit(rotation_lines(rotation))
             self.assert_round_fit(
                 rotation_lines("auto", FakeAutoRotation(rotation))
@@ -244,6 +249,31 @@ class OperatingModeTests(unittest.TestCase):
 
                 self.assertEqual(90, selected)
                 self.assertFalse(should_save)
+
+    def test_lower_display_is_available_only_with_average_lap_time(self):
+        without_average = available_settings_choices(0)
+        with_average = available_settings_choices(90)
+
+        self.assertNotIn("lower_display", [choice[1] for choice in without_average])
+        self.assertIn("lower_display", [choice[1] for choice in with_average])
+        self.assertEqual(len(without_average) + 1, len(with_average))
+
+    def test_lower_display_selection_saves_and_cancels(self):
+        selected, should_save = select_lower_display(
+            FakeTouch(["right", "up"]),
+            object(),
+            "elapsed",
+        )
+        cancelled, cancel_save = select_lower_display(
+            FakeTouch(["left", "down"]),
+            object(),
+            "elapsed",
+        )
+
+        self.assertEqual("laps_remaining", selected)
+        self.assertTrue(should_save)
+        self.assertEqual("elapsed", cancelled)
+        self.assertFalse(cancel_save)
 
     def test_rotation_cancel_restores_display_and_touch_preview(self):
         lcd = FakeLCD()
@@ -446,6 +476,68 @@ class OperatingModeTests(unittest.TestCase):
             self.assertEqual(0, updated["AVG_LAP_TIME_SECONDS"])
             self.assertFalse(os.path.exists(path))
 
+    def test_laps_remaining_lower_display_is_persisted(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = os.path.join(directory, "user.json")
+            configured = dict(DEFAULT_USER_PARAMS)
+            configured["AVG_LAP_TIME_SECONDS"] = 90
+
+            updated, mode = configure_operating_mode(
+                FakeTouch(
+                    [
+                        "left", "up",  # Settings
+                        "right", "right", "right", "right", "up",
+                        # Lower Display
+                        "right", "up",  # LAPS LEFT, save
+                        "down",  # leave Settings
+                        "down",  # cancel mode menu
+                    ]
+                ),
+                FakeLCD(),
+                configured,
+                path,
+            )
+
+            self.assertEqual("timer", mode)
+            self.assertEqual(
+                "laps_remaining",
+                updated["TRACK_LOWER_DISPLAY"],
+            )
+            self.assertEqual(
+                "laps_remaining",
+                file_in(path, debug=False)["TRACK_LOWER_DISPLAY"],
+            )
+
+    def test_clearing_average_atomically_restores_elapsed_display(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = os.path.join(directory, "user.json")
+            configured = dict(DEFAULT_USER_PARAMS)
+            configured["AVG_LAP_TIME_SECONDS"] = 60
+            configured["TRACK_LOWER_DISPLAY"] = "laps_remaining"
+
+            updated, mode = configure_operating_mode(
+                FakeTouch(
+                    [
+                        "left", "up",  # Settings
+                        "right", "right", "right", "up",  # Avg Lap Time
+                        "left", "up",  # 00 minutes, next
+                        "up",  # 00 seconds, save
+                        "down",  # leave Settings
+                        "down",  # cancel mode menu
+                    ]
+                ),
+                FakeLCD(),
+                configured,
+                path,
+            )
+
+            saved = file_in(path, debug=False)
+            self.assertEqual("timer", mode)
+            self.assertEqual(0, updated["AVG_LAP_TIME_SECONDS"])
+            self.assertEqual("elapsed", updated["TRACK_LOWER_DISPLAY"])
+            self.assertEqual(0, saved["AVG_LAP_TIME_SECONDS"])
+            self.assertEqual("elapsed", saved["TRACK_LOWER_DISPLAY"])
+
     def test_restore_defaults_requires_confirmation_and_returns_timer(self):
         with tempfile.TemporaryDirectory() as directory:
             path = os.path.join(directory, "user.json")
@@ -459,7 +551,7 @@ class OperatingModeTests(unittest.TestCase):
             touch = FakeTouch(
                 [
                     "right", "up",      # Settings from G Mode
-                    "right", "right", "right", "right", "up",
+                    "right", "right", "right", "right", "right", "up",
                     # Restore defaults
                     "right", "up",      # Confirm RESTORE
                 ]

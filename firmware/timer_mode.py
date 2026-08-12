@@ -281,6 +281,8 @@ def run_timer_mode(
                 maximum_g=session_g_peak.display_label(
                     now - track_session.start_time
                 ),
+                lower_display=user_params["TRACK_LOWER_DISPLAY"],
+                avg_lap_time_seconds=user_params["AVG_LAP_TIME_SECONDS"],
             ),
             draw_frame=lambda frame: draw_live_frame(touch, lcd, frame),
             stop_check=lambda: touch.StopGesture(lcd),

@@ -137,6 +137,47 @@ class TouchModeTests(unittest.TestCase):
         )
         self.assertEqual(("show",), lcd.calls[-1])
 
+    def test_live_screen_uses_small_lap_label_and_larger_value(self):
+        class FakeLCD:
+            green = 1
+            white = 2
+
+            def __init__(self):
+                self.calls = []
+
+            def fill(self, colour):
+                self.calls.append(("fill", colour))
+
+            def write_time_centered(self, *args):
+                self.calls.append(("write_time_centered",) + args)
+
+            def show(self):
+                self.calls.append(("show",))
+
+        touch = self.make_touch()
+        lcd = FakeLCD()
+
+        touch.LiveScreen(
+            lcd,
+            textsize_rem=7,
+            backColour=lcd.green,
+            textColour=lcd.white,
+            elapsed=("LAP", "6.7"),
+            remaining="19:48",
+        )
+
+        text_calls = [
+            call for call in lcd.calls if call[0] == "write_time_centered"
+        ]
+        self.assertEqual(
+            [
+                ("write_time_centered", "19:48", 82, 7, lcd.white),
+                ("write_time_centered", "LAP", 160, 1, lcd.white),
+                ("write_time_centered", "6.7", 176, 4, lcd.white),
+            ],
+            text_calls,
+        )
+
 
 if __name__ == "__main__":
     unittest.main()

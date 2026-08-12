@@ -15,6 +15,10 @@ G_LONG_PRESS = 0x0C
 G_DOUBLE_CLIC = 0x0B
 MAXIMUM_G_Y = 40
 MAXIMUM_G_TEXT_SIZE = 2
+LAP_LABEL_Y = 160
+LAP_LABEL_TEXT_SIZE = 1
+LAP_VALUE_Y = 176
+LAP_VALUE_TEXT_SIZE = 4
 
 
 def _sleep_ms(clock, milliseconds):
@@ -359,7 +363,21 @@ class Touch_CST816T(object):
                 textColour,
             )
         LCD.write_time_centered(remaining, 82, textsize_rem, textColour)
-        LCD.write_time_centered(elapsed, 180, 3, textColour)
+        if isinstance(elapsed, tuple) and len(elapsed) == 2:
+            LCD.write_time_centered(
+                elapsed[0],
+                LAP_LABEL_Y,
+                LAP_LABEL_TEXT_SIZE,
+                textColour,
+            )
+            LCD.write_time_centered(
+                elapsed[1],
+                LAP_VALUE_Y,
+                LAP_VALUE_TEXT_SIZE,
+                textColour,
+            )
+        else:
+            LCD.write_time_centered(elapsed, 180, 3, textColour)
         LCD.show()
     
     

@@ -107,17 +107,54 @@ def high_contrast_text_colour(rgb, black, white):
 
 
 def _visible_times(session, now):
-    elapsed_seconds = max(0, int(now - session.start_time))
-    remaining_seconds = max(0, int(session.duration_secs) - elapsed_seconds)
+    elapsed_seconds, remaining_seconds = _visible_seconds(session, now)
     return (
         secs_to_mins_secs(remaining_seconds),
         secs_to_mins_secs(elapsed_seconds),
     )
 
 
-def track_live_frame(session, now, lcd, maximum_g=None):
+def _visible_seconds(session, now):
+    elapsed_seconds = max(0, int(now - session.start_time))
+    remaining_seconds = max(0, int(session.duration_secs) - elapsed_seconds)
+    return elapsed_seconds, remaining_seconds
+
+
+def estimated_laps_display(remaining_seconds, avg_lap_time_seconds):
+    """Return separate lap label/value content, or ``None`` if unavailable."""
+    if (
+        not isinstance(avg_lap_time_seconds, int)
+        or isinstance(avg_lap_time_seconds, bool)
+        or avg_lap_time_seconds <= 0
+    ):
+        return None
+    remaining = max(0, int(remaining_seconds))
+    estimate = remaining / avg_lap_time_seconds
+    if estimate < 100:
+        value = "{:.1f}".format(estimate)
+    else:
+        value = str(int(estimate + 0.5))
+    return "LAP", value
+
+
+def track_live_frame(
+    session,
+    now,
+    lcd,
+    maximum_g=None,
+    lower_display="elapsed",
+    avg_lap_time_seconds=0,
+):
     """Return the track timer with a smooth proportional colour gradient."""
+    _, remaining_seconds = _visible_seconds(session, now)
     remaining, elapsed = _visible_times(session, now)
+    if lower_display == "laps_remaining":
+        laps_display = estimated_laps_display(
+            remaining_seconds,
+            avg_lap_time_seconds,
+        )
+        if laps_display is not None:
+            elapsed = laps_display
     if now >= session.end_time:
         background_rgb = TRACK_OVERRUN_PURPLE_RGB
         remaining = "00:00"
