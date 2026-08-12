@@ -136,6 +136,32 @@ class SettingsTests(unittest.TestCase):
         self.assertTrue(valid)
         self.assertEqual(5, params["MODE_MENU_HOLD_SEC"])
 
+    def test_existing_system_file_gains_default_auto_dim_percentage(self):
+        legacy = dict(DEFAULT_SYSTEM_PARAMS)
+        del legacy["AUTO_DIM_PERCENT"]
+
+        params, valid = validate_system_params(legacy)
+
+        self.assertTrue(valid)
+        self.assertEqual(25, params["AUTO_DIM_PERCENT"])
+
+    def test_auto_dim_percentage_must_be_an_integer_from_one_to_one_hundred(self):
+        for percentage in (1, 25, 100):
+            with self.subTest(percentage=percentage):
+                configured = dict(DEFAULT_SYSTEM_PARAMS)
+                configured["AUTO_DIM_PERCENT"] = percentage
+                params, valid = validate_system_params(configured)
+                self.assertTrue(valid)
+                self.assertEqual(percentage, params["AUTO_DIM_PERCENT"])
+
+        for invalid in (0, 101, 25.0, True, "25", None):
+            with self.subTest(invalid=invalid):
+                configured = dict(DEFAULT_SYSTEM_PARAMS)
+                configured["AUTO_DIM_PERCENT"] = invalid
+                params, valid = validate_system_params(configured)
+                self.assertFalse(valid)
+                self.assertEqual(DEFAULT_SYSTEM_PARAMS, params)
+
     def test_legacy_boot_delay_is_migrated(self):
         legacy = dict(DEFAULT_SYSTEM_PARAMS)
         del legacy["STARTUP_SPLASH_DURATION_SEC"]
@@ -182,11 +208,12 @@ class SettingsTests(unittest.TestCase):
                 "OPERATING_MODE": "timer",
                 "BRIGHTNESS_PERCENT": 100,
                 "DISPLAY_ROTATION_DEG": 0,
+                "AUTO_DIM_ENABLED": False,
             },
             normalized,
         )
 
-    def test_existing_user_file_gains_mode_brightness_and_rotation_defaults(self):
+    def test_existing_user_file_gains_all_new_setting_defaults(self):
         normalized, changed = normalize_user_params(
             {"SENSITIVITY": 0, "RACE_LENGTH": 10, "REST_LENGTH": 15},
             DEFAULT_SYSTEM_PARAMS,
@@ -196,6 +223,7 @@ class SettingsTests(unittest.TestCase):
         self.assertEqual("timer", normalized["OPERATING_MODE"])
         self.assertEqual(100, normalized["BRIGHTNESS_PERCENT"])
         self.assertEqual(0, normalized["DISPLAY_ROTATION_DEG"])
+        self.assertFalse(normalized["AUTO_DIM_ENABLED"])
 
     def test_invalid_mode_and_brightness_use_defaults(self):
         invalid = dict(DEFAULT_USER_PARAMS)
@@ -210,6 +238,29 @@ class SettingsTests(unittest.TestCase):
         self.assertTrue(changed)
         self.assertEqual("timer", normalized["OPERATING_MODE"])
         self.assertEqual(100, normalized["BRIGHTNESS_PERCENT"])
+
+    def test_auto_dim_accepts_only_boolean_values(self):
+        for enabled in (False, True):
+            with self.subTest(enabled=enabled):
+                user = dict(DEFAULT_USER_PARAMS)
+                user["AUTO_DIM_ENABLED"] = enabled
+                normalized, changed = normalize_user_params(
+                    user,
+                    DEFAULT_SYSTEM_PARAMS,
+                )
+                self.assertFalse(changed)
+                self.assertIs(enabled, normalized["AUTO_DIM_ENABLED"])
+
+        for invalid in (0, 1, "on", None):
+            with self.subTest(invalid=invalid):
+                user = dict(DEFAULT_USER_PARAMS)
+                user["AUTO_DIM_ENABLED"] = invalid
+                normalized, changed = normalize_user_params(
+                    user,
+                    DEFAULT_SYSTEM_PARAMS,
+                )
+                self.assertTrue(changed)
+                self.assertFalse(normalized["AUTO_DIM_ENABLED"])
 
     def test_rotation_accepts_auto_and_four_angles(self):
         for rotation in (0, 90, 180, 270, "auto"):

@@ -8,6 +8,7 @@ from hold_detector import HoldDetector
 from operating_modes import (
     SETTINGS_CHOICES,
     apply_brightness,
+    auto_dim_lines,
     brightness_duty,
     brightness_lines,
     confirm_restore_defaults,
@@ -16,6 +17,7 @@ from operating_modes import (
     restore_confirmation_lines,
     rotation_lines,
     select_brightness,
+    select_auto_dim,
     select_operating_mode,
     select_rotation,
     settings_menu_lines,
@@ -170,6 +172,8 @@ class OperatingModeTests(unittest.TestCase):
                 self.assert_round_fit(mode_menu_lines(index))
             for brightness in (25, 50, 75, 100):
                 self.assert_round_fit(brightness_lines(brightness))
+            for enabled in (False, True):
+                self.assert_round_fit(auto_dim_lines(enabled))
             self.assert_round_fit(rotation_lines(rotation))
             self.assert_round_fit(
                 rotation_lines("auto", FakeAutoRotation(rotation))
@@ -189,6 +193,23 @@ class OperatingModeTests(unittest.TestCase):
         self.assertFalse(should_save)
         self.assertIn(brightness_duty(75), lcd.duties)
         self.assertEqual(brightness_duty(100), lcd.duties[-1])
+
+    def test_auto_dim_selection_saves_and_cancels_boolean_values(self):
+        selected, should_save = select_auto_dim(
+            FakeTouch(["right", "up"]),
+            object(),
+            False,
+        )
+        cancelled, cancel_save = select_auto_dim(
+            FakeTouch(["left", "down"]),
+            object(),
+            False,
+        )
+
+        self.assertTrue(selected)
+        self.assertTrue(should_save)
+        self.assertFalse(cancelled)
+        self.assertFalse(cancel_save)
 
     def test_rotation_cancel_restores_display_and_touch_preview(self):
         lcd = FakeLCD()
@@ -317,6 +338,29 @@ class OperatingModeTests(unittest.TestCase):
             self.assertEqual(75, file_in(path, debug=False)["BRIGHTNESS_PERCENT"])
             self.assertIn(brightness_duty(75), lcd.duties)
 
+    def test_auto_dim_setting_is_persisted(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = os.path.join(directory, "user.json")
+
+            updated, mode = configure_operating_mode(
+                FakeTouch(
+                    [
+                        "left", "up",       # Settings
+                        "right", "right", "up",  # Auto-Dim
+                        "right", "up",      # On, save
+                        "down",              # leave Settings
+                        "down",              # cancel mode menu
+                    ]
+                ),
+                FakeLCD(),
+                dict(DEFAULT_USER_PARAMS),
+                path,
+            )
+
+            self.assertEqual("timer", mode)
+            self.assertTrue(updated["AUTO_DIM_ENABLED"])
+            self.assertTrue(file_in(path, debug=False)["AUTO_DIM_ENABLED"])
+
     def test_restore_defaults_requires_confirmation_and_returns_timer(self):
         with tempfile.TemporaryDirectory() as directory:
             path = os.path.join(directory, "user.json")
@@ -329,7 +373,7 @@ class OperatingModeTests(unittest.TestCase):
             touch = FakeTouch(
                 [
                     "right", "up",      # Settings from G Mode
-                    "right", "right", "up",  # Restore defaults
+                    "right", "right", "right", "up",  # Restore defaults
                     "right", "up",      # Confirm RESTORE
                 ]
             )

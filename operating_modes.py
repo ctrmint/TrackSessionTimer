@@ -24,6 +24,7 @@ MODE_CHOICES = (
 SETTINGS_CHOICES = (
     ("Brightness", "brightness"),
     ("Rotation", "rotation"),
+    ("Auto-Dim", "auto_dim"),
     ("Restore defaults", "restore"),
     ("Back", "back"),
 )
@@ -153,6 +154,42 @@ def select_brightness(touch, lcd, current):
             return values[index], True
         elif gesture == "down":
             apply_brightness(lcd, original)
+            return original, False
+
+
+def auto_dim_lines(enabled):
+    return [
+        ["Auto-Dim", None, 35, 2, "white"],
+        ["ON" if enabled else "OFF", None, 88, 5, "white"],
+        ["Ready screen only", None, 153, 1, "white"],
+        ["L/R: change", None, 180, 1, "white"],
+        ["UP: save", None, 202, 1, "white"],
+        ["DOWN: cancel", None, 220, 1, "white"],
+    ]
+
+
+def select_auto_dim(touch, lcd, current):
+    """Select persistent Ready-screen Auto-Dim state."""
+    values = (False, True)
+    index = values.index(current) if isinstance(current, bool) else 0
+    original = values[index]
+
+    def draw():
+        touch.ControlScreen(
+            lcd,
+            text_array=auto_dim_lines(values[index]),
+            back_colour="black",
+        )
+
+    draw()
+    while True:
+        gesture = touch.GetGesture(lcd)
+        if gesture in ("left", "right"):
+            index = 1 - index
+            draw()
+        elif gesture == "up":
+            return values[index], True
+        elif gesture == "down":
             return original, False
 
 
@@ -334,6 +371,20 @@ def _run_settings(
                     previous,
                     auto_rotation=auto_rotation,
                 )
+
+        elif action == "auto_dim":
+            previous = user_params["AUTO_DIM_ENABLED"]
+            selected, should_save = select_auto_dim(touch, lcd, previous)
+            if not should_save:
+                continue
+            updated, saved = persist_setting(
+                user_file,
+                user_params,
+                "AUTO_DIM_ENABLED",
+                selected,
+            )
+            if saved:
+                user_params = updated
 
         elif action == "restore" and confirm_restore_defaults(touch, lcd):
             defaults, saved = restore_user_defaults(user_file)

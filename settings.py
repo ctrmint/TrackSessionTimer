@@ -17,6 +17,7 @@ DEFAULT_SYSTEM_PARAMS = {
     "STARTUP_SPLASH_DURATION_SEC": 2,
     "HARDWARE_SPLASH_DURATION_SEC": 2,
     "MODE_MENU_HOLD_SEC": 5,
+    "AUTO_DIM_PERCENT": 25,
 }
 
 DEFAULT_USER_PARAMS = {
@@ -26,6 +27,7 @@ DEFAULT_USER_PARAMS = {
     "OPERATING_MODE": "timer",
     "BRIGHTNESS_PERCENT": 100,
     "DISPLAY_ROTATION_DEG": 0,
+    "AUTO_DIM_ENABLED": False,
 }
 
 OPERATING_MODES = ("timer", "g")
@@ -101,6 +103,10 @@ def validate_system_params(data):
         source["MODE_MENU_HOLD_SEC"] = DEFAULT_SYSTEM_PARAMS[
             "MODE_MENU_HOLD_SEC"
         ]
+    if "AUTO_DIM_PERCENT" not in source:
+        source["AUTO_DIM_PERCENT"] = DEFAULT_SYSTEM_PARAMS[
+            "AUTO_DIM_PERCENT"
+        ]
 
     valid = (
         _positive_int_list(source.get("DURATION_VALUES"))
@@ -113,6 +119,9 @@ def validate_system_params(data):
         and source.get("HARDWARE_SPLASH_DURATION_SEC") >= 0
         and _is_number(source.get("MODE_MENU_HOLD_SEC"))
         and source.get("MODE_MENU_HOLD_SEC") > 0
+        and isinstance(source.get("AUTO_DIM_PERCENT"), int)
+        and not isinstance(source.get("AUTO_DIM_PERCENT"), bool)
+        and 1 <= source.get("AUTO_DIM_PERCENT") <= 100
         and isinstance(source.get("VERSION"), str)
         and len(source.get("VERSION")) > 0
         and source.get("DISPLAY_DELAY_REST_COLOUR") in DISPLAY_COLOURS
@@ -166,6 +175,11 @@ def normalize_user_params(data, system_params=None):
         "DISPLAY_ROTATION_DEG",
         DEFAULT_USER_PARAMS["DISPLAY_ROTATION_DEG"],
     )
+    auto_dim_enabled = migrated.get(
+        "AUTO_DIM_ENABLED",
+        DEFAULT_USER_PARAMS["AUTO_DIM_ENABLED"],
+    )
+    auto_dim_invalid = not isinstance(auto_dim_enabled, bool)
 
     if (
         not isinstance(race_length, int)
@@ -194,6 +208,8 @@ def normalize_user_params(data, system_params=None):
         or display_rotation not in DISPLAY_ROTATION_VALUES
     ):
         display_rotation = DEFAULT_USER_PARAMS["DISPLAY_ROTATION_DEG"]
+    if auto_dim_invalid:
+        auto_dim_enabled = DEFAULT_USER_PARAMS["AUTO_DIM_ENABLED"]
 
     normalized = {
         "SENSITIVITY": sensitivity,
@@ -202,8 +218,9 @@ def normalize_user_params(data, system_params=None):
         "OPERATING_MODE": operating_mode,
         "BRIGHTNESS_PERCENT": brightness_percent,
         "DISPLAY_ROTATION_DEG": display_rotation,
+        "AUTO_DIM_ENABLED": auto_dim_enabled,
     }
-    return normalized, normalized != source
+    return normalized, auto_dim_invalid or normalized != source
 
 
 def _remove_if_exists(path):

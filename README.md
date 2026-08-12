@@ -7,7 +7,10 @@ Trackday or race session timer.
 * Added left/right review navigation and prevented cool-down from starting until every result page has been reached and the final page is advanced.
 * Kept summary data in bounded RAM only; no session history is written to flash in this increment.
 * Retained captured peaks as explicitly partial data if the IMU fails during a session, while normal timing continues.
-* Expanded hardware-independent regression coverage to 165 tests.
+* Added a persistent Auto-Dim setting that reduces the Ready screen to 25% brightness after 10 seconds without motion and restores the saved brightness immediately when motion resumes or Ready is left.
+* Kept Auto-Dim disabled by default and preserved normal brightness if motion sensing is disabled or unavailable.
+* Moved the Ready-screen dim level into `params.json` as the validated `AUTO_DIM_PERCENT` system setting, defaulting to 25%.
+* Expanded hardware-independent regression coverage to 185 tests.
 
 ## Version 4.2
 ### v4.2.0
@@ -110,7 +113,7 @@ Press and continuously hold the touchscreen for five seconds from the Timer Read
 
 * **Timer Mode** retains the existing track, rest, and Launch Mode workflow. During a track session, a baseline-corrected value such as `MAX  1.23  g` appears in a compact, clearly spaced line above the countdown. The peak resets for each track session and remains visible through overrun. `MAX --` indicates that acceleration data is unavailable; timing and the stop gesture continue normally. After a double-tap stop, an interactive review gives actual duration, overrun, total maximum G, acceleration, braking, left G, right G, and the completion reason their own high-visibility screens. Swipe left to advance and right to go back; cool-down begins only after swiping left from the eighth and final page. The review is held in RAM only and is not retained after leaving it. Rest sessions do not show maximum G.
 * **G Mode** calibrates the stationary QMI8658 baseline, then presents a responsive graphical round G meter rather than numeric telemetry. The green filled marker and short trail show the current filtered acceleration vector at the LCD's display-limited refresh rate. The red hollow marker records the maximum vector, while the red perimeter arc shows peak magnitude relative to the 4 g visual scale. Double-tap resets the trail and peak. Hold for five seconds to return to the mode menu.
-* **Settings** provides 25%, 50%, 75%, and 100% brightness choices with immediate preview. Rotation offers **Auto** plus fixed 0°, 90°, 180°, and 270° clockwise mounting angles. Auto uses the onboard IMU to keep the display upright as the device turns; fixed choices continue to work without the IMU. In every case, touch gestures remain relative to the text on screen. Swipe up saves a preview; swipe down cancels and restores the previous brightness or orientation. **Restore defaults** requires confirmation, then restores Timer Mode, 100% brightness, fixed 0° rotation, 20-minute track/rest sessions, and disabled Launch Mode.
+* **Settings** provides 25%, 50%, 75%, and 100% brightness choices with immediate preview. Rotation offers **Auto** plus fixed 0°, 90°, 180°, and 270° clockwise mounting angles. Auto uses the onboard IMU to keep the display upright as the device turns; fixed choices continue to work without the IMU. **Auto-Dim** is an independent On/Off choice: when enabled, the Ready screen reduces to 25% brightness after 10 seconds without motion and returns immediately to the saved brightness when motion is detected. It never dims menus, configuration, Launch Mode, active timing, review, rest, or G Mode. In every case, touch gestures remain relative to the text on screen. Swipe up saves a preview; swipe down cancels and restores the previous brightness or orientation. **Restore defaults** requires confirmation, then restores Timer Mode, 100% brightness, fixed 0° rotation, disabled Auto-Dim, 20-minute track/rest sessions, and disabled Launch Mode.
 
 If the IMU is unavailable in G Mode, the firmware shows an actionable message and safely returns to Timer Mode. The timer remains usable.
 
@@ -187,7 +190,7 @@ The second command should identify an RP2040 MicroPython board.
 Run these commands from the repository root. Supporting files and font assets are copied first; `main.py` is installed last as the automatic entry point.
 
 ```sh
-mpremote connect auto fs cp application.py auto_rotation.py battery.py configuration.py font_data.py font_renderer.py g_force.py g_meter.py hardware.py hardware_splash.py hold_detector.py launch.py lcd_1inch28.py live_display.py operating_modes.py orientation.py params.json qmi8658.py ready_screen.py session_summary.py settings.py splash.py timer_mode.py timing.py touch_drive.py font_data*.bin startup_splash.rgb565 :
+mpremote connect auto fs cp application.py auto_dim.py auto_rotation.py battery.py configuration.py font_data.py font_renderer.py g_force.py g_meter.py hardware.py hardware_splash.py hold_detector.py launch.py lcd_1inch28.py live_display.py operating_modes.py orientation.py params.json qmi8658.py ready_screen.py session_summary.py settings.py splash.py timer_mode.py timing.py touch_drive.py font_data*.bin startup_splash.rgb565 :
 mpremote connect auto fs cp main.py :
 mpremote connect auto reset
 ```
@@ -198,7 +201,7 @@ On a fresh installation, the firmware creates `user.json` with safe defaults. To
 mpremote connect auto fs cp user.json :
 ```
 
-When upgrading an existing device, omit that command so all of its saved user settings are preserved. The firmware adds a safe 0° rotation automatically when upgrading an older `user.json`.
+When upgrading an existing device, omit that command so all of its saved user settings are preserved. The firmware adds safe fixed 0° rotation and disabled Auto-Dim defaults automatically when upgrading an older `user.json`.
 
 ### 4. Verify first boot
 
@@ -211,26 +214,26 @@ If first boot fails:
 * An import error generally means a `.py` support module was omitted; repeat the upload command and keep `main.py` last.
 * No serial device after flashing usually indicates a charge-only USB cable, an incorrect UF2, or a board still in BOOT mode.
 * A touchscreen hardware error is a controlled stop: check that this is the supported integrated board, then restart it. The serial message includes the failed operation or unexpected chip ID.
-* An IMU hardware error disables Launch Mode and the session maximum-G reading for the current run. Swipe down to use the normal timer; `MAX --` confirms that timing remains available without the IMU.
+* An IMU hardware error disables Launch Mode, Ready-screen Auto-Dim, and the session maximum-G reading for the current run. Swipe down to use the normal timer; `MAX --` confirms that timing remains available without the IMU. Auto-Dim safely leaves the display at its saved brightness.
 
 ### Peripheral failure policy
 
 The touchscreen is required for safe operation. A transient touchscreen I2C failure is retried three times at 100 ms intervals; an unexpected chip ID is not retried. If detection still fails, the firmware shows an actionable error, logs the detailed cause over serial, and stops before using an incomplete touch object.
 
-The QMI8658 IMU is optional unless a non-zero Launch Mode sensitivity, G Mode, or Auto rotation is selected. It is not initialized when none of those features needs it. Transient initialization failures receive three attempts, while an unexpected chip ID fails immediately. If initialization or a runtime sample fails, sensor-dependent behavior degrades safely and the standard timer remains available. Auto retains its last reliable orientation, and manual rotation choices remain usable. Saved choices are retained so the firmware can retry after a restart.
+The QMI8658 IMU is optional unless a non-zero Launch Mode sensitivity, G Mode, Auto rotation, or Ready-screen Auto-Dim is selected. It is not initialized when none of those features needs it. Transient initialization failures receive three attempts, while an unexpected chip ID fails immediately. If initialization or a runtime sample fails, sensor-dependent behavior degrades safely and the standard timer remains available. Auto rotation retains its last reliable orientation, Auto-Dim restores the saved brightness, and manual rotation choices remain usable. Saved choices are retained so the firmware can retry after a restart.
 
 ## Configuration files
 
 Version 4.2.0 uses two separate configuration scopes:
 
-* `params.json` contains system-owned choices and display behavior: `DURATION_VALUES`, `LAUNCH_SENSE_VALUES`, `VERSION`, `DISPLAY_DELAY_REST`, `DISPLAY_DELAY_REST_COLOUR`, `STARTUP_SPLASH_DURATION_SEC`, `HARDWARE_SPLASH_DURATION_SEC`, and `MODE_MENU_HOLD_SEC`.
-* `user.json` contains the current user selections: `RACE_LENGTH` (track-session minutes), `REST_LENGTH` (pit-rest minutes), `SENSITIVITY` (launch threshold; `0` disables Launch Mode), `OPERATING_MODE` (`timer` or `g`), `BRIGHTNESS_PERCENT`, and `DISPLAY_ROTATION_DEG` (`auto` or the fixed clockwise device mounting angle `0`, `90`, `180`, or `270`).
+* `params.json` contains system-owned choices and display behavior: `DURATION_VALUES`, `LAUNCH_SENSE_VALUES`, `VERSION`, `DISPLAY_DELAY_REST`, `DISPLAY_DELAY_REST_COLOUR`, `STARTUP_SPLASH_DURATION_SEC`, `HARDWARE_SPLASH_DURATION_SEC`, `MODE_MENU_HOLD_SEC`, and `AUTO_DIM_PERCENT` (an integer from 1 to 100, default 25).
+* `user.json` contains the current user selections: `RACE_LENGTH` (track-session minutes), `REST_LENGTH` (pit-rest minutes), `SENSITIVITY` (launch threshold; `0` disables Launch Mode), `OPERATING_MODE` (`timer` or `g`), `BRIGHTNESS_PERCENT`, `DISPLAY_ROTATION_DEG` (`auto` or the fixed clockwise device mounting angle `0`, `90`, `180`, or `270`), and `AUTO_DIM_ENABLED` (`true` or `false`).
 
 Launch sensitivity is the filtered change in acceleration-vector magnitude from a 0.4-second stationary baseline, measured in g. This removes gravity and mounting orientation and handles acceleration on either side of every axis. Lower non-zero values are more sensitive. Detection requires three consecutive samples above the threshold; double-tap cancels the wait, and a 30-second timeout returns to the Ready screen. See `User Guide.md` for the practical meaning of every configured value.
 
 Directional summary labels use a dashboard mounting convention: the screen faces the driver, the screen-normal axis represents acceleration/braking, and the viewer-horizontal axis represents left/right. Fixed and automatic quarter-turn display rotations are applied to the lateral mapping. Mounting the board with its screen facing away from the driver reverses the longitudinal labels.
 
-The firmware has built-in system and user defaults. Missing, malformed, or unsupported user values are replaced with safe defaults and saved using the canonical keys above. Existing `TRACK_LENGTH`, `TRACK_SESSION_LENGTH`, and `REST_SESSION_LENGTH` user keys are migrated automatically, while older files gain Timer Mode, 100% brightness, and 0° rotation defaults.
+The firmware has built-in system and user defaults. Missing, malformed, or unsupported user values are replaced with safe defaults and saved using the canonical keys above. Existing `TRACK_LENGTH`, `TRACK_SESSION_LENGTH`, and `REST_SESSION_LENGTH` user keys are migrated automatically, while older files gain Timer Mode, 100% brightness, 0° rotation, and disabled Auto-Dim defaults.
 
 ## Host-side tests
 
@@ -240,4 +243,4 @@ Run the hardware-independent regression suite with:
 python -m unittest discover -s tests -v
 ```
 
-The suite uses fakes for time, continuous holds, touch gestures, automatic and fixed display rotation, gravity filtering/hysteresis, mode/settings navigation, graphical G vectors, display calls, filesystem operations, accelerometer samples, battery readings, and USB power state. Version 4.0.0 was additionally validated on the supported Waveshare board for both startup screens, Timer and G Mode boots, native G-meter rendering, LCD/font rendering, CST816S touch-state detection, QMI8658 sampling, saved settings, launch behavior, and the Ready-screen battery indicator.
+The suite uses fakes for time, continuous holds, touch gestures, automatic and fixed display rotation, Ready-screen inactivity dimming and motion wake-up, gravity filtering/hysteresis, mode/settings navigation, graphical G vectors, display calls, filesystem operations, accelerometer samples, battery readings, and USB power state. Version 4.0.0 was additionally validated on the supported Waveshare board for both startup screens, Timer and G Mode boots, native G-meter rendering, LCD/font rendering, CST816S touch-state detection, QMI8658 sampling, saved settings, launch behavior, and the Ready-screen battery indicator.
