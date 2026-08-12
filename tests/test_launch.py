@@ -100,6 +100,22 @@ class LaunchLoopTests(unittest.TestCase):
         self.assertTrue(result)
         self.assertEqual(3, sensor.read_count)
 
+    def test_launch_samples_can_feed_session_metrics_without_extra_reads(self):
+        launch = [sample(0, 0, 1.5)] * 3
+        observed = []
+
+        result, sensor, _ = self.run_detector(
+            launch,
+            baseline=(0, 0, 0),
+            filter_alpha=1,
+            sample_update=observed.append,
+        )
+
+        self.assertTrue(result)
+        self.assertEqual(3, sensor.read_count)
+        self.assertEqual(3, len(observed))
+        self.assertEqual((0.0, 0.0, 1.5), observed[-1])
+
     def test_isolated_vibration_spikes_do_not_trigger(self):
         baseline = [sample(0, 0, 1)] * 4
         vibration_pattern = [

@@ -15,6 +15,7 @@ from live_display import (
     track_live_frame,
 )
 from ready_screen import draw_ready_screen
+from session_summary import build_session_summary, review_session_summary
 from settings import persist_setting
 from timing import SessionTracker
 
@@ -192,6 +193,10 @@ def run_timer_mode(
                 sensitivity=sensitivity,
                 cancel_check=lambda: touch.StopGesture(lcd),
                 baseline=session_baseline,
+                sample_update=lambda sample: session_g_peak.update(
+                    sample,
+                    rotation=getattr(lcd, "rotation", 0),
+                ),
             )
         except PeripheralError as error:
             qmi8658 = None
@@ -207,7 +212,7 @@ def run_timer_mode(
         def sample_session_g(_now):
             nonlocal qmi8658
             try:
-                session_g_peak.sample()
+                session_g_peak.sample(rotation=getattr(lcd, "rotation", 0))
             except PeripheralError as error:
                 print("Session maximum G paused: {}".format(error))
                 session_g_peak.disable()
@@ -230,6 +235,13 @@ def run_timer_mode(
             stop_check=lambda: touch.StopGesture(lcd),
             sample_update=sample_session_g,
         )
+
+        session_summary = build_session_summary(
+            track_session,
+            time.time(),
+            g_peak=session_g_peak,
+        )
+        review_session_summary(touch, lcd, session_summary)
 
         touch.ControlScreen(
             lcd,
