@@ -1,4 +1,4 @@
-# User Guide - v4.3.0
+# User Guide - v4.4.0
 
 ## General / Sessions Use
 The following describes general operation of both the ``Track Session`` and ``Rest in Pits Session`` timer.

@@ -1,9 +1,16 @@
-# Track Session Timer - v4.3.0
+# Track Session Timer - v4.4.0
 Trackday or race session timer.
 
 # Change log
+## Version 4.4
+### v4.4.0 [current]
+* Moved the device payload into `firmware/` and added a layout-aware deployment tool so the repository stays organized while MicroPython still receives a flat filesystem.
+* Added a persistent average lap-time setting with separate minute and second editing.
+* Added a conditional Lower Display setting that can replace the running track-session count-up line with an approximate laps-remaining value.
+* Expanded hardware-independent regression coverage to 207 tests.
+
 ## Version 4.3
-### v4.3.0 [current]
+### v4.3.0
 * Added an interactive post-track review with a high-visibility page for actual duration, overrun, completion reason, total maximum G, and each directional acceleration/braking/left/right peak.
 * Added left/right review navigation and prevented cool-down from starting until every result page has been reached and the final page is advanced.
 * Kept summary data in bounded RAM only; no session history is written to flash in this increment.
@@ -13,10 +20,7 @@ Trackday or race session timer.
 * Kept Auto-Dim disabled by default and preserved normal brightness if motion sensing is disabled or unavailable.
 * Moved the Ready-screen dim level into `params.json` as the validated `AUTO_DIM_PERCENT` system setting, defaulting to 25%.
 * Added a hardware Bill of Materials identifying the cased Waveshare RP2040-Touch-LCD-1.28-B reference variant.
-* Moved the device payload into `firmware/` and added a layout-aware deployment tool so the repository stays organized while MicroPython still receives a flat filesystem.
-* Added a persistent average lap-time setting with separate minute and second editing for future lap features.
-* Added a conditional Lower Display setting that can replace the running track-session count-up line with an approximate laps-remaining value.
-* Expanded hardware-independent regression coverage to 207 tests.
+* Expanded hardware-independent regression coverage to 186 tests.
 
 ## Version 4.2
 ### v4.2.0
@@ -228,7 +232,7 @@ On a fresh or intentionally reset device, add `--include-user` to install the ex
 
 ### 4. Verify first boot
 
-The display should show the Caterham v4.3.0 splash, the hardware-information splash with **Firmware v4.3.0**, and then the green **Ready** screen. The serial console should report the loaded user parameters, `Success:Detected CST816T.`, and the touchscreen revision without a traceback.
+The display should show the Caterham v4.4.0 splash, the hardware-information splash with **Firmware v4.4.0**, and then the green **Ready** screen. The serial console should report the loaded user parameters, `Success:Detected CST816T.`, and the touchscreen revision without a traceback.
 
 If first boot fails:
 
@@ -247,7 +251,7 @@ The QMI8658 IMU is optional unless a non-zero Launch Mode sensitivity, G Mode, A
 
 ## Configuration files
 
-Version 4.3.0 uses two separate configuration scopes:
+Version 4.4.0 uses two separate configuration scopes:
 
 * `firmware/params.json` is the repository source for system-owned choices and display behavior: `DURATION_VALUES`, `LAUNCH_SENSE_VALUES`, `VERSION`, `DISPLAY_DELAY_REST`, `DISPLAY_DELAY_REST_COLOUR`, `STARTUP_SPLASH_DURATION_SEC`, `HARDWARE_SPLASH_DURATION_SEC`, `MODE_MENU_HOLD_SEC`, and `AUTO_DIM_PERCENT` (an integer from 1 to 100, default 25).
 * `firmware/user.json` is the optional fresh-install example. The device-root `user.json` contains the current selections: `RACE_LENGTH` (track-session minutes), `REST_LENGTH` (pit-rest minutes), `SENSITIVITY` (launch threshold; `0` disables Launch Mode), `OPERATING_MODE` (`timer` or `g`), `BRIGHTNESS_PERCENT`, `DISPLAY_ROTATION_DEG` (`auto` or the fixed clockwise device mounting angle `0`, `90`, `180`, or `270`), `AUTO_DIM_ENABLED` (`true` or `false`), `AVG_LAP_TIME_SECONDS` (integer `0` to `3599`; `0` means not configured), and `TRACK_LOWER_DISPLAY` (`elapsed` or `laps_remaining`; laps require a non-zero average).
