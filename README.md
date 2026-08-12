@@ -125,7 +125,9 @@ An accelerometer cannot determine rotation around gravity when the screen is nea
 
 ## Supported hardware
 
-Version 4.2.0 supports the integrated [Waveshare RP2040-Touch-LCD-1.28](https://www.waveshare.com/product/rp2040-touch-lcd-1.28.htm). This board combines the RP2040, GC9A01A 240x240 LCD, CST816S touchscreen, and QMI8658 IMU used by the firmware. The standalone 1.28-inch Touch LCD connected to a separate Raspberry Pi Pico uses a different pin map and is not currently supported.
+The physical reference build uses the integrated [Waveshare RP2040-Touch-LCD-1.28-B](https://www.waveshare.com/RP2040-Touch-LCD-1.28-B.htm), SKU 26371. The `-B` variant is supplied as one unit containing the RP2040 board, 1.28-inch round touch display, CNC metal case, and acrylic bottom plate; a separate Raspberry Pi Pico, display, or enclosure is not required. Its electronics combine the RP2040, GC9A01A 240x240 LCD, CST816S touchscreen, and QMI8658 IMU used by the firmware.
+
+See the [Hardware Bill of Materials](HARDWARE_BOM.md) for the exact part, included subsystems, installation items, optional battery specification, and a comparison with similar but unsuitable variants. The standalone 1.28-inch Touch LCD connected to a separate Raspberry Pi Pico uses a different pin map and is not currently supported.
 
 ### Onboard pin map
 
