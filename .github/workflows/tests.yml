@@ -13,6 +13,6 @@ jobs:
         with:
           python-version: "3.11"
       - name: Check Python syntax
-        run: python -m compileall -q .
+        run: python -m compileall -q firmware tests tools
       - name: Run host-side tests
-        run: python -m unittest discover -s tests -v
+        run: python -m unittest discover -s tests -t . -v

@@ -13,7 +13,8 @@ Trackday or race session timer.
 * Kept Auto-Dim disabled by default and preserved normal brightness if motion sensing is disabled or unavailable.
 * Moved the Ready-screen dim level into `params.json` as the validated `AUTO_DIM_PERCENT` system setting, defaulting to 25%.
 * Added a hardware Bill of Materials identifying the cased Waveshare RP2040-Touch-LCD-1.28-B reference variant.
-* Expanded hardware-independent regression coverage to 186 tests.
+* Moved the device payload into `firmware/` and added a layout-aware deployment tool so the repository stays organized while MicroPython still receives a flat filesystem.
+* Expanded hardware-independent regression coverage to 189 tests.
 
 ## Version 4.2
 ### v4.2.0
@@ -63,7 +64,7 @@ Trackday or race session timer.
 * Greater control over session settings, includes ability to define track session length and rest session length.
 * Improved UI colours for 85% and 95% session expiry.
 
-See user guide.
+See the [User Guide](docs/USER_GUIDE.md).
 
 ### Fixes
 * Incorrect pin out. 
@@ -77,16 +78,31 @@ The timer is designed to support common session lengths, making it quick and eas
 
 The timer utilizes the Waveshare 1.28-inch round touch display, allowing for configuration and operation through intuitive swipe gestures.
 
+## Repository structure
+
+The repository separates device code from documentation, generated-source inputs, host tooling, and tests:
+
+```text
+firmware/   MicroPython source, configuration, fonts and splash payload
+tests/      Hardware-independent regression tests
+tools/      Deployment and asset-generation utilities
+assets/     Editable splash source and preview
+docs/       User Guide and Hardware Bill of Materials
+.github/    CI workflow and contribution templates
+```
+
+MicroPython still receives the contents of `firmware/` at its filesystem root. This preserves the existing `main.py` entry point and sibling imports; the repository directory itself is not copied to the device. See [firmware/README.md](firmware/README.md) for the payload contract.
+
 ## Display font
 
 The firmware includes a compact proportional bitmap font rendered directly at the display's native resolution. It replaces enlargement of MicroPython's 8x8 framebuffer font, so large countdown digits and labels retain smooth shapes instead of scaling into square pixels.
 
 The running track and rest countdown uses the 74-pixel native font, the closest available pre-rendered size to a 10% increase from the previous 64-pixel countdown. Timer digits use equal-width cells, so changing figures do not move the centered countdown, maximum-G, or elapsed-time positions.
 
-`font_data.py` and its flash-backed `font_data*.bin` glyph assets are generated from Montserrat SemiBold. The assets contain pre-rasterized native UI sizes, allowing the Pico to use its fast framebuffer blitter without holding the complete font in RAM. To regenerate them, install Pillow and run:
+`firmware/font_data.py` and its flash-backed `firmware/font_data*.bin` glyph assets are generated from Montserrat SemiBold. The assets contain pre-rasterized native UI sizes, allowing the Pico to use its fast framebuffer blitter without holding the complete font in RAM. To regenerate them, install Pillow and run:
 
 ```sh
-python tools/generate_font.py /path/to/Montserrat-SemiBold.otf font_data.py
+python tools/generate_font.py /path/to/Montserrat-SemiBold.otf firmware/font_data.py
 ```
 
 The generated font data is distributed under the SIL Open Font License 1.1 in `FONT_LICENSE.txt`.
@@ -106,7 +122,7 @@ The second screen uses high-contrast white text on black and identifies the hard
 The original artwork and a device-layout preview are kept under `assets/`. To regenerate the runtime asset after changing the source image, install Pillow and run:
 
 ```sh
-python tools/convert_splash.py assets/startup_splash.gif startup_splash.rgb565 \
+python tools/convert_splash.py assets/startup_splash.gif firmware/startup_splash.rgb565 \
   --preview assets/startup_splash_preview.png
 ```
 
@@ -130,7 +146,7 @@ An accelerometer cannot determine rotation around gravity when the screen is nea
 
 The physical reference build uses the integrated [Waveshare RP2040-Touch-LCD-1.28-B](https://www.waveshare.com/RP2040-Touch-LCD-1.28-B.htm), SKU 26371. The `-B` variant is supplied as one unit containing the RP2040 board, 1.28-inch round touch display, CNC metal case, and acrylic bottom plate; a separate Raspberry Pi Pico, display, or enclosure is not required. Its electronics combine the RP2040, GC9A01A 240x240 LCD, CST816S touchscreen, and QMI8658 IMU used by the firmware.
 
-See the [Hardware Bill of Materials](HARDWARE_BOM.md) for the exact part, included subsystems, installation items, optional battery specification, and a comparison with similar but unsuitable variants. The standalone 1.28-inch Touch LCD connected to a separate Raspberry Pi Pico uses a different pin map and is not currently supported.
+See the [Hardware Bill of Materials](docs/HARDWARE_BOM.md) for the exact part, included subsystems, installation items, optional battery specification, and a comparison with similar but unsuitable variants. The standalone 1.28-inch Touch LCD connected to a separate Raspberry Pi Pico uses a different pin map and is not currently supported.
 
 ### Onboard pin map
 
@@ -192,21 +208,19 @@ The second command should identify an RP2040 MicroPython board.
 
 ### 3. Upload the application
 
-Run these commands from the repository root. Supporting files and font assets are copied first; `main.py` is installed last as the automatic entry point.
+From the repository root, run the deployment tool. It copies the flat contents of `firmware/` to the MicroPython filesystem root, installs `main.py` last, and resets the board:
 
 ```sh
-mpremote connect auto fs cp application.py auto_dim.py auto_rotation.py battery.py configuration.py font_data.py font_renderer.py g_force.py g_meter.py hardware.py hardware_splash.py hold_detector.py launch.py lcd_1inch28.py live_display.py operating_modes.py orientation.py params.json qmi8658.py ready_screen.py session_summary.py settings.py splash.py timer_mode.py timing.py touch_drive.py font_data*.bin startup_splash.rgb565 :
-mpremote connect auto fs cp main.py :
-mpremote connect auto reset
+python tools/deploy.py
 ```
 
-On a fresh installation, the firmware creates `user.json` with safe defaults. To start with the example preferences in this repository, copy it before `main.py`:
+The default deployment deliberately preserves the `user.json` already on the device. Select a specific connection when automatic discovery is unsuitable:
 
 ```sh
-mpremote connect auto fs cp user.json :
+python tools/deploy.py --port /dev/ttyACM0
 ```
 
-When upgrading an existing device, omit that command so all of its saved user settings are preserved. The firmware adds safe fixed 0° rotation and disabled Auto-Dim defaults automatically when upgrading an older `user.json`.
+On a fresh or intentionally reset device, add `--include-user` to install the example `firmware/user.json`. Otherwise a missing file is created with safe defaults during startup. Use `--dry-run` to inspect every ordered command without connecting. Existing files gain safe fixed 0° rotation and disabled Auto-Dim defaults automatically when upgraded.
 
 ### 4. Verify first boot
 
@@ -215,8 +229,8 @@ The display should show the Caterham v4.3.0 splash, the hardware-information spl
 If first boot fails:
 
 * `OSError: Font bitmap is missing or truncated` means one or more `font_data*.bin` files were not copied.
-* The original text-only splash means `startup_splash.rgb565` is missing or has the wrong size; repeat the application upload command.
-* An import error generally means a `.py` support module was omitted; repeat the upload command and keep `main.py` last.
+* The original text-only splash means `startup_splash.rgb565` is missing or has the wrong size; rerun `python tools/deploy.py`.
+* An import error generally means a `.py` support module was omitted; rerun `python tools/deploy.py`, which installs `main.py` last automatically.
 * No serial device after flashing usually indicates a charge-only USB cable, an incorrect UF2, or a board still in BOOT mode.
 * A touchscreen hardware error is a controlled stop: check that this is the supported integrated board, then restart it. The serial message includes the failed operation or unexpected chip ID.
 * An IMU hardware error disables Launch Mode, Ready-screen Auto-Dim, and the session maximum-G reading for the current run. Swipe down to use the normal timer; `MAX --` confirms that timing remains available without the IMU. Auto-Dim safely leaves the display at its saved brightness.
@@ -231,10 +245,10 @@ The QMI8658 IMU is optional unless a non-zero Launch Mode sensitivity, G Mode, A
 
 Version 4.3.0 uses two separate configuration scopes:
 
-* `params.json` contains system-owned choices and display behavior: `DURATION_VALUES`, `LAUNCH_SENSE_VALUES`, `VERSION`, `DISPLAY_DELAY_REST`, `DISPLAY_DELAY_REST_COLOUR`, `STARTUP_SPLASH_DURATION_SEC`, `HARDWARE_SPLASH_DURATION_SEC`, `MODE_MENU_HOLD_SEC`, and `AUTO_DIM_PERCENT` (an integer from 1 to 100, default 25).
-* `user.json` contains the current user selections: `RACE_LENGTH` (track-session minutes), `REST_LENGTH` (pit-rest minutes), `SENSITIVITY` (launch threshold; `0` disables Launch Mode), `OPERATING_MODE` (`timer` or `g`), `BRIGHTNESS_PERCENT`, `DISPLAY_ROTATION_DEG` (`auto` or the fixed clockwise device mounting angle `0`, `90`, `180`, or `270`), and `AUTO_DIM_ENABLED` (`true` or `false`).
+* `firmware/params.json` is the repository source for system-owned choices and display behavior: `DURATION_VALUES`, `LAUNCH_SENSE_VALUES`, `VERSION`, `DISPLAY_DELAY_REST`, `DISPLAY_DELAY_REST_COLOUR`, `STARTUP_SPLASH_DURATION_SEC`, `HARDWARE_SPLASH_DURATION_SEC`, `MODE_MENU_HOLD_SEC`, and `AUTO_DIM_PERCENT` (an integer from 1 to 100, default 25).
+* `firmware/user.json` is the optional fresh-install example. The device-root `user.json` contains the current selections: `RACE_LENGTH` (track-session minutes), `REST_LENGTH` (pit-rest minutes), `SENSITIVITY` (launch threshold; `0` disables Launch Mode), `OPERATING_MODE` (`timer` or `g`), `BRIGHTNESS_PERCENT`, `DISPLAY_ROTATION_DEG` (`auto` or the fixed clockwise device mounting angle `0`, `90`, `180`, or `270`), and `AUTO_DIM_ENABLED` (`true` or `false`).
 
-Launch sensitivity is the filtered change in acceleration-vector magnitude from a 0.4-second stationary baseline, measured in g. This removes gravity and mounting orientation and handles acceleration on either side of every axis. Lower non-zero values are more sensitive. Detection requires three consecutive samples above the threshold; double-tap cancels the wait, and a 30-second timeout returns to the Ready screen. See `User Guide.md` for the practical meaning of every configured value.
+Launch sensitivity is the filtered change in acceleration-vector magnitude from a 0.4-second stationary baseline, measured in g. This removes gravity and mounting orientation and handles acceleration on either side of every axis. Lower non-zero values are more sensitive. Detection requires three consecutive samples above the threshold; double-tap cancels the wait, and a 30-second timeout returns to the Ready screen. See the [User Guide](docs/USER_GUIDE.md) for the practical meaning of every configured value.
 
 Directional summary labels use a dashboard mounting convention: the screen faces the driver, the screen-normal axis represents acceleration/braking, and the viewer-horizontal axis represents left/right. Fixed and automatic quarter-turn display rotations are applied to the lateral mapping. Mounting the board with its screen facing away from the driver reverses the longitudinal labels.
 
@@ -245,7 +259,7 @@ The firmware has built-in system and user defaults. Missing, malformed, or unsup
 Run the hardware-independent regression suite with:
 
 ```sh
-python -m unittest discover -s tests -v
+python -m unittest discover -s tests -t . -v
 ```
 
 The suite uses fakes for time, continuous holds, touch gestures, automatic and fixed display rotation, Ready-screen inactivity dimming and motion wake-up, gravity filtering/hysteresis, mode/settings navigation, graphical G vectors, display calls, filesystem operations, accelerometer samples, battery readings, and USB power state. Version 4.0.0 was additionally validated on the supported Waveshare board for both startup screens, Timer and G Mode boots, native G-meter rendering, LCD/font rendering, CST816S touch-state detection, QMI8658 sampling, saved settings, launch behavior, and the Ready-screen battery indicator.

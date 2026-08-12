@@ -57,7 +57,7 @@ class SplashTests(unittest.TestCase):
         self.assertEqual(bytes([9] * 32), surface.buffer)
 
     def test_generated_device_asset_matches_framebuffer_size(self):
-        asset = Path(__file__).parents[1] / "startup_splash.rgb565"
+        asset = Path(__file__).parents[1] / "firmware" / "startup_splash.rgb565"
 
         self.assertEqual(240 * 240 * 2, asset.stat().st_size)
 
