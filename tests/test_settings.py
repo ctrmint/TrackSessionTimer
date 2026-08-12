@@ -209,6 +209,7 @@ class SettingsTests(unittest.TestCase):
                 "BRIGHTNESS_PERCENT": 100,
                 "DISPLAY_ROTATION_DEG": 0,
                 "AUTO_DIM_ENABLED": False,
+                "AVG_LAP_TIME_SECONDS": 0,
             },
             normalized,
         )
@@ -224,6 +225,7 @@ class SettingsTests(unittest.TestCase):
         self.assertEqual(100, normalized["BRIGHTNESS_PERCENT"])
         self.assertEqual(0, normalized["DISPLAY_ROTATION_DEG"])
         self.assertFalse(normalized["AUTO_DIM_ENABLED"])
+        self.assertEqual(0, normalized["AVG_LAP_TIME_SECONDS"])
 
     def test_invalid_mode_and_brightness_use_defaults(self):
         invalid = dict(DEFAULT_USER_PARAMS)
@@ -261,6 +263,29 @@ class SettingsTests(unittest.TestCase):
                 )
                 self.assertTrue(changed)
                 self.assertFalse(normalized["AUTO_DIM_ENABLED"])
+
+    def test_average_lap_time_accepts_only_bounded_integer_seconds(self):
+        for seconds in (0, 1, 62, 3599):
+            with self.subTest(seconds=seconds):
+                user = dict(DEFAULT_USER_PARAMS)
+                user["AVG_LAP_TIME_SECONDS"] = seconds
+                normalized, changed = normalize_user_params(
+                    user,
+                    DEFAULT_SYSTEM_PARAMS,
+                )
+                self.assertFalse(changed)
+                self.assertEqual(seconds, normalized["AVG_LAP_TIME_SECONDS"])
+
+        for invalid in (-1, 3600, True, 90.0, "90", None):
+            with self.subTest(invalid=invalid):
+                user = dict(DEFAULT_USER_PARAMS)
+                user["AVG_LAP_TIME_SECONDS"] = invalid
+                normalized, changed = normalize_user_params(
+                    user,
+                    DEFAULT_SYSTEM_PARAMS,
+                )
+                self.assertTrue(changed)
+                self.assertEqual(0, normalized["AVG_LAP_TIME_SECONDS"])
 
     def test_rotation_accepts_auto_and_four_angles(self):
         for rotation in (0, 90, 180, 270, "auto"):

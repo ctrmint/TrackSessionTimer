@@ -5,6 +5,7 @@ from settings import (
     BRIGHTNESS_VALUES,
     DEFAULT_USER_PARAMS,
     DISPLAY_ROTATION_VALUES,
+    MAX_AVG_LAP_TIME_SECONDS,
     OPERATING_MODES,
     persist_setting,
     restore_user_defaults,
@@ -25,6 +26,7 @@ SETTINGS_CHOICES = (
     ("Brightness", "brightness"),
     ("Rotation", "rotation"),
     ("Auto-Dim", "auto_dim"),
+    ("Avg Lap Time", "avg_lap_time"),
     ("Restore defaults", "restore"),
     ("Back", "back"),
 )
@@ -189,6 +191,75 @@ def select_auto_dim(touch, lcd, current):
             draw()
         elif gesture == "up":
             return values[index], True
+        elif gesture == "down":
+            return original, False
+
+
+def format_avg_lap_time(total_seconds):
+    """Format a validated canonical duration for the settings display."""
+    bounded = max(0, min(MAX_AVG_LAP_TIME_SECONDS, int(total_seconds)))
+    minutes, seconds = divmod(bounded, 60)
+    return "{:02d}:{:02d}".format(minutes, seconds)
+
+
+def avg_lap_time_lines(total_seconds, component):
+    """Build the two-stage average-lap-time editor."""
+    setting_minutes = component == "minutes"
+    return [
+        ["Avg Lap Time", None, 30, 2, "white"],
+        [format_avg_lap_time(total_seconds), None, 78, 4, "white"],
+        [
+            "Set minutes" if setting_minutes else "Set seconds",
+            None,
+            143,
+            1,
+            "white",
+        ],
+        ["L/R: change", None, 180, 1, "white"],
+        ["UP: next" if setting_minutes else "UP: save", None, 202, 1, "white"],
+        ["DOWN: cancel", None, 220, 1, "white"],
+    ]
+
+
+def select_avg_lap_time(touch, lcd, current):
+    """Edit minutes then seconds and return ``(total_seconds, save)``."""
+    if (
+        not isinstance(current, int)
+        or isinstance(current, bool)
+        or current < 0
+        or current > MAX_AVG_LAP_TIME_SECONDS
+    ):
+        current = DEFAULT_USER_PARAMS["AVG_LAP_TIME_SECONDS"]
+    original = current
+    minutes, seconds = divmod(current, 60)
+    component = "minutes"
+
+    def value():
+        return (minutes * 60) + seconds
+
+    def draw():
+        touch.ControlScreen(
+            lcd,
+            text_array=avg_lap_time_lines(value(), component),
+            back_colour="black",
+        )
+
+    draw()
+    while True:
+        gesture = touch.GetGesture(lcd)
+        if gesture in ("left", "right"):
+            delta = -1 if gesture == "left" else 1
+            if component == "minutes":
+                minutes = (minutes + delta) % 60
+            else:
+                seconds = (seconds + delta) % 60
+            draw()
+        elif gesture == "up":
+            if component == "minutes":
+                component = "seconds"
+                draw()
+            else:
+                return value(), True
         elif gesture == "down":
             return original, False
 
@@ -381,6 +452,24 @@ def _run_settings(
                 user_file,
                 user_params,
                 "AUTO_DIM_ENABLED",
+                selected,
+            )
+            if saved:
+                user_params = updated
+
+        elif action == "avg_lap_time":
+            previous = user_params["AVG_LAP_TIME_SECONDS"]
+            selected, should_save = select_avg_lap_time(
+                touch,
+                lcd,
+                previous,
+            )
+            if not should_save:
+                continue
+            updated, saved = persist_setting(
+                user_file,
+                user_params,
+                "AVG_LAP_TIME_SECONDS",
                 selected,
             )
             if saved:

@@ -28,11 +28,13 @@ DEFAULT_USER_PARAMS = {
     "BRIGHTNESS_PERCENT": 100,
     "DISPLAY_ROTATION_DEG": 0,
     "AUTO_DIM_ENABLED": False,
+    "AVG_LAP_TIME_SECONDS": 0,
 }
 
 OPERATING_MODES = ("timer", "g")
 BRIGHTNESS_VALUES = (25, 50, 75, 100)
 DISPLAY_ROTATION_VALUES = (0, 90, 180, 270, "auto")
+MAX_AVG_LAP_TIME_SECONDS = (60 * 60) - 1
 
 LEGACY_USER_KEYS = {
     "TRACK_LENGTH": "RACE_LENGTH",
@@ -180,6 +182,16 @@ def normalize_user_params(data, system_params=None):
         DEFAULT_USER_PARAMS["AUTO_DIM_ENABLED"],
     )
     auto_dim_invalid = not isinstance(auto_dim_enabled, bool)
+    avg_lap_time_seconds = migrated.get(
+        "AVG_LAP_TIME_SECONDS",
+        DEFAULT_USER_PARAMS["AVG_LAP_TIME_SECONDS"],
+    )
+    avg_lap_time_invalid = (
+        not isinstance(avg_lap_time_seconds, int)
+        or isinstance(avg_lap_time_seconds, bool)
+        or avg_lap_time_seconds < 0
+        or avg_lap_time_seconds > MAX_AVG_LAP_TIME_SECONDS
+    )
 
     if (
         not isinstance(race_length, int)
@@ -210,6 +222,8 @@ def normalize_user_params(data, system_params=None):
         display_rotation = DEFAULT_USER_PARAMS["DISPLAY_ROTATION_DEG"]
     if auto_dim_invalid:
         auto_dim_enabled = DEFAULT_USER_PARAMS["AUTO_DIM_ENABLED"]
+    if avg_lap_time_invalid:
+        avg_lap_time_seconds = DEFAULT_USER_PARAMS["AVG_LAP_TIME_SECONDS"]
 
     normalized = {
         "SENSITIVITY": sensitivity,
@@ -219,8 +233,12 @@ def normalize_user_params(data, system_params=None):
         "BRIGHTNESS_PERCENT": brightness_percent,
         "DISPLAY_ROTATION_DEG": display_rotation,
         "AUTO_DIM_ENABLED": auto_dim_enabled,
+        "AVG_LAP_TIME_SECONDS": avg_lap_time_seconds,
     }
-    return normalized, auto_dim_invalid or normalized != source
+    return (
+        normalized,
+        auto_dim_invalid or avg_lap_time_invalid or normalized != source,
+    )
 
 
 def _remove_if_exists(path):
