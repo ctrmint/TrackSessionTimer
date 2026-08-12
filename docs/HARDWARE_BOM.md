@@ -63,6 +63,6 @@ When checking a listing, require all three identifiers: **RP2040**, **Touch**, a
 
 - [Waveshare RP2040-Touch-LCD-1.28-B product page](https://www.waveshare.com/RP2040-Touch-LCD-1.28-B.htm) — exact part number, SKU, case, onboard hardware and package contents.
 - [Waveshare RP2040-Touch-LCD-1.28 wiki](https://www.waveshare.com/wiki/RP2040-Touch-LCD-1.28) — shared electronics specifications, display/touch controllers, IMU and battery connector requirements.
-- [Track Session Timer supported hardware and pin map](README.md#supported-hardware) — firmware-specific compatibility and fixed internal connections.
+- [Track Session Timer supported hardware and pin map](../README.md#supported-hardware) — firmware-specific compatibility and fixed internal connections.
 
 Manufacturer details were last checked on 12 August 2026. Product listings can change; verify the part number and SKU before purchasing.

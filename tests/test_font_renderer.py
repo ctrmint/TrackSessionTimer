@@ -1,3 +1,4 @@
+import os
 import unittest
 from pathlib import Path
 
@@ -44,6 +45,11 @@ class FakeBlitSurface(FakeSurface):
 
 
 class FontRendererTests(unittest.TestCase):
+    def setUp(self):
+        repository_working_directory = Path.cwd()
+        os.chdir(Path(font_data.__file__).parent)
+        self.addCleanup(os.chdir, repository_working_directory)
+
     def test_font_metadata_covers_printable_ascii(self):
         glyph_count = font_data.LAST_CODE_POINT - font_data.FIRST_CODE_POINT + 1
         self.assertEqual(95, glyph_count)
@@ -63,7 +69,8 @@ class FontRendererTests(unittest.TestCase):
                 last_offset = (offsets[-2] << 8) | offsets[-1]
                 last_stride = (widths[-1] + 7) // 8
                 self.assertEqual(bitmap_size, last_offset + (last_stride * height))
-                self.assertEqual(bitmap_size, Path(bitmap_file).stat().st_size)
+                bitmap_path = Path(font_data.__file__).parent / bitmap_file
+                self.assertEqual(bitmap_size, bitmap_path.stat().st_size)
 
     def test_sizes_are_native_pixel_heights(self):
         self.assertEqual(12, pixel_height(1))

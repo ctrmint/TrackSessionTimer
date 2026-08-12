@@ -25,10 +25,12 @@ class FakeTouch:
 
 class ReleaseVersionTests(unittest.TestCase):
     def test_build_defaults_docs_and_both_startup_screens_report_release(self):
-        with (REPOSITORY_ROOT / "params.json").open(encoding="utf-8") as source:
+        with (REPOSITORY_ROOT / "firmware" / "params.json").open(
+            encoding="utf-8"
+        ) as source:
             params = json.load(source)
         readme = (REPOSITORY_ROOT / "README.md").read_text(encoding="utf-8")
-        user_guide = (REPOSITORY_ROOT / "User Guide.md").read_text(
+        user_guide = (REPOSITORY_ROOT / "docs" / "USER_GUIDE.md").read_text(
             encoding="utf-8"
         )
 

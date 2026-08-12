@@ -98,7 +98,8 @@ def main():
     module = '''"""Generated TrackTimer Sans metadata.
 
 Derived from Montserrat SemiBold, Copyright 2024 The Montserrat.Git Project
-Authors. Licensed under the SIL Open Font License 1.1; see FONT_LICENSE.txt.
+Authors. Licensed under the SIL Open Font License 1.1; see
+../FONT_LICENSE.txt in the source repository.
 Regenerate with ``tools/generate_font.py`` rather than editing this file.
 """
 
