@@ -1,16 +1,19 @@
-# Track Session Timer - v4.2.0
+# Track Session Timer - v4.3.0
 Trackday or race session timer.
 
 # Change log
-## Unreleased
+## Version 4.3
+### v4.3.0 [current]
 * Added an interactive post-track review with a high-visibility page for actual duration, overrun, completion reason, total maximum G, and each directional acceleration/braking/left/right peak.
 * Added left/right review navigation and prevented cool-down from starting until every result page has been reached and the final page is advanced.
 * Kept summary data in bounded RAM only; no session history is written to flash in this increment.
 * Retained captured peaks as explicitly partial data if the IMU fails during a session, while normal timing continues.
+* Added a live maximum-G value above the running track-session countdown.
 * Added a persistent Auto-Dim setting that reduces the Ready screen to 25% brightness after 10 seconds without motion and restores the saved brightness immediately when motion resumes or Ready is left.
 * Kept Auto-Dim disabled by default and preserved normal brightness if motion sensing is disabled or unavailable.
 * Moved the Ready-screen dim level into `params.json` as the validated `AUTO_DIM_PERCENT` system setting, defaulting to 25%.
-* Expanded hardware-independent regression coverage to 185 tests.
+* Added a hardware Bill of Materials identifying the cased Waveshare RP2040-Touch-LCD-1.28-B reference variant.
+* Expanded hardware-independent regression coverage to 186 tests.
 
 ## Version 4.2
 ### v4.2.0
@@ -207,7 +210,7 @@ When upgrading an existing device, omit that command so all of its saved user se
 
 ### 4. Verify first boot
 
-The display should show the Caterham v4.2.0 splash, the hardware-information splash, and then the green **Ready** screen. The serial console should report the loaded user parameters, `Success:Detected CST816T.`, and the touchscreen revision without a traceback.
+The display should show the Caterham v4.3.0 splash, the hardware-information splash with **Firmware v4.3.0**, and then the green **Ready** screen. The serial console should report the loaded user parameters, `Success:Detected CST816T.`, and the touchscreen revision without a traceback.
 
 If first boot fails:
 
@@ -226,7 +229,7 @@ The QMI8658 IMU is optional unless a non-zero Launch Mode sensitivity, G Mode, A
 
 ## Configuration files
 
-Version 4.2.0 uses two separate configuration scopes:
+Version 4.3.0 uses two separate configuration scopes:
 
 * `params.json` contains system-owned choices and display behavior: `DURATION_VALUES`, `LAUNCH_SENSE_VALUES`, `VERSION`, `DISPLAY_DELAY_REST`, `DISPLAY_DELAY_REST_COLOUR`, `STARTUP_SPLASH_DURATION_SEC`, `HARDWARE_SPLASH_DURATION_SEC`, `MODE_MENU_HOLD_SEC`, and `AUTO_DIM_PERCENT` (an integer from 1 to 100, default 25).
 * `user.json` contains the current user selections: `RACE_LENGTH` (track-session minutes), `REST_LENGTH` (pit-rest minutes), `SENSITIVITY` (launch threshold; `0` disables Launch Mode), `OPERATING_MODE` (`timer` or `g`), `BRIGHTNESS_PERCENT`, `DISPLAY_ROTATION_DEG` (`auto` or the fixed clockwise device mounting angle `0`, `90`, `180`, or `270`), and `AUTO_DIM_ENABLED` (`true` or `false`).
