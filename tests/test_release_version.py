@@ -6,7 +6,7 @@ from hardware_splash import run_startup_screens
 from settings import DEFAULT_SYSTEM_PARAMS
 
 
-RELEASE_VERSION = "4.3.0"
+RELEASE_VERSION = "4.4.0"
 REPOSITORY_ROOT = Path(__file__).resolve().parents[1]
 
 
