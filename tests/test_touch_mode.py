@@ -3,6 +3,9 @@ import sys
 import types
 import unittest
 
+from font_renderer import measure_text
+import live_screen_graphics
+
 
 def import_touch_driver():
     machine = types.ModuleType("machine")
@@ -95,9 +98,19 @@ class TouchModeTests(unittest.TestCase):
         self.assertFalse(touch.ClearGesture(None))
 
     def test_live_screen_places_smaller_maximum_g_clear_of_countdown(self):
+        self.assertEqual(
+            ("MAX", "1.23 g"),
+            live_screen_graphics.maximum_g_parts("MAX  1.23  g"),
+        )
+        self.assertEqual(
+            ("MAX", "--"),
+            live_screen_graphics.maximum_g_parts("MAX --"),
+        )
+
         class FakeLCD:
             green = 1
             white = 2
+            width = 240
 
             def __init__(self):
                 self.calls = []
@@ -107,6 +120,34 @@ class TouchModeTests(unittest.TestCase):
 
             def write_time_centered(self, *args):
                 self.calls.append(("write_time_centered",) + args)
+
+            def text_width(self, text, size, tabular_digits=False):
+                return measure_text(
+                    text,
+                    size,
+                    tabular_digits=tabular_digits,
+                )
+
+            def write_text(
+                self,
+                text,
+                x_position,
+                y_position,
+                size,
+                colour,
+                tabular_digits=False,
+            ):
+                self.calls.append(
+                    (
+                        "write_text",
+                        text,
+                        x_position,
+                        y_position,
+                        size,
+                        colour,
+                        tabular_digits,
+                    )
+                )
 
             def show(self):
                 self.calls.append(("show",))
@@ -124,16 +165,35 @@ class TouchModeTests(unittest.TestCase):
             maximum_g="MAX  1.23  g",
         )
 
-        text_calls = [
+        max_calls = [call for call in lcd.calls if call[0] == "write_text"]
+        value = "1.23 g"
+        label_width = measure_text("MAX", 1)
+        value_width = measure_text(value, 3, tabular_digits=True)
+        label_x = (lcd.width - label_width - 8 - value_width) // 2
+        self.assertEqual(
+            [
+                ("write_text", "MAX", label_x, 45, 1, lcd.white, False),
+                (
+                    "write_text",
+                    value,
+                    label_x + label_width + 8,
+                    36,
+                    3,
+                    lcd.white,
+                    True,
+                ),
+            ],
+            max_calls,
+        )
+        time_calls = [
             call for call in lcd.calls if call[0] == "write_time_centered"
         ]
         self.assertEqual(
             [
-                ("write_time_centered", "MAX  1.23  g", 40, 2, lcd.white),
                 ("write_time_centered", "19:48", 82, 7, lcd.white),
                 ("write_time_centered", "00:12", 180, 3, lcd.white),
             ],
-            text_calls,
+            time_calls,
         )
         self.assertEqual(("show",), lcd.calls[-1])
 
@@ -177,6 +237,72 @@ class TouchModeTests(unittest.TestCase):
             ],
             text_calls,
         )
+
+    def test_live_screen_draws_bounded_progress_ring_and_phase_label(self):
+        class FakeLCD:
+            green = 1
+            white = 2
+
+            def __init__(self):
+                self.calls = []
+
+            def fill(self, colour):
+                self.calls.append(("fill", colour))
+
+            def line(self, *args):
+                self.calls.append(("line",) + args)
+
+            def write_time_centered(self, *args):
+                self.calls.append(("write_time_centered",) + args)
+
+            def show(self):
+                self.calls.append(("show",))
+
+        touch = self.make_touch()
+        lcd = FakeLCD()
+
+        packed_points = live_screen_graphics.PROGRESS_RING_POINTS
+        self.assertEqual(74, len(packed_points))
+        for offset in range(0, len(packed_points), 2):
+            x_position = packed_points[offset]
+            y_position = packed_points[offset + 1]
+            self.assertTrue(0 <= x_position < 240)
+            self.assertTrue(0 <= y_position < 240)
+            radius = (
+                ((x_position - 120) ** 2) + ((y_position - 120) ** 2)
+            ) ** 0.5
+            self.assertGreaterEqual(radius, 111)
+            self.assertLessEqual(radius, 113)
+
+        touch.LiveScreen(
+            lcd,
+            textsize_rem=7,
+            backColour=lcd.green,
+            textColour=lcd.white,
+            elapsed="00:12",
+            remaining="19:48",
+            progress_segments=18,
+            phase_label="WARNING",
+        )
+
+        ring_lines = [call for call in lcd.calls if call[0] == "line"]
+        self.assertEqual(36, len(ring_lines))
+        for _name, x1, y1, x2, y2, colour in ring_lines:
+            self.assertTrue(
+                all(0 <= value < 240 for value in (x1, y1, x2, y2))
+            )
+            self.assertEqual(lcd.white, colour)
+        self.assertIn(
+            (
+                "write_time_centered",
+                "WARNING",
+                live_screen_graphics.PROGRESS_PHASE_Y,
+                live_screen_graphics.PROGRESS_PHASE_TEXT_SIZE,
+                lcd.white,
+            ),
+            lcd.calls,
+        )
+        self.assertEqual(("show",), lcd.calls[-1])
 
 
 if __name__ == "__main__":

@@ -402,13 +402,25 @@ class LCD_1inch28(framebuf.FrameBuffer):
             self.spi.write(self.buffer[Addr : Addr+((Xend-Xstart)*2)])
         self.cs(1)
         
-    def text_width(self, text, size):
+    def text_width(self, text, size, tabular_digits=False):
         """Return the proportional width of text at a UI font size."""
-        return self._measure_text(text, size)
+        return self._measure_text(
+            text,
+            size,
+            tabular_digits=tabular_digits,
+        )
 
-    def write_text(self, text, x, y, size, color):
+    def write_text(self, text, x, y, size, color, tabular_digits=False):
         """Draw smooth proportional text and return its rendered width."""
-        return self._draw_text(self, text, x, y, size, color)
+        return self._draw_text(
+            self,
+            text,
+            x,
+            y,
+            size,
+            color,
+            tabular_digits=tabular_digits,
+        )
 
     def write_centered(self, text, y, size, color):
         """Draw smooth proportional text centered on the display."""
