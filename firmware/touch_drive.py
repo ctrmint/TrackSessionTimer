@@ -13,14 +13,10 @@ G_LEFT = 0x03
 G_RIGHT = 0x04
 G_LONG_PRESS = 0x0C
 G_DOUBLE_CLIC = 0x0B
-MAXIMUM_G_Y = 40
-MAXIMUM_G_TEXT_SIZE = 2
 LAP_LABEL_Y = 160
 LAP_LABEL_TEXT_SIZE = 1
 LAP_VALUE_Y = 176
 LAP_VALUE_TEXT_SIZE = 4
-
-
 def _sleep_ms(clock, milliseconds):
     sleep_ms = getattr(clock, "sleep_ms", None)
     if sleep_ms is not None:
@@ -341,6 +337,8 @@ class Touch_CST816T(object):
         elapsed=None,
         remaining=None,
         maximum_g=None,
+        progress_segments=None,
+        phase_label=None,
     ):
         self._update_auto_rotation(LCD, redraw=False)
         if remaining is None:
@@ -355,13 +353,21 @@ class Touch_CST816T(object):
             textsize_rem = 5
         self.Set_Mode(0)
         LCD.fill(backColour)
-        if maximum_g is not None:
-            LCD.write_time_centered(
-                maximum_g,
-                MAXIMUM_G_Y,
-                MAXIMUM_G_TEXT_SIZE,
+        if (
+            progress_segments is not None
+            or phase_label is not None
+            or maximum_g is not None
+        ):
+            from live_screen_graphics import draw_live_overlays
+
+            draw_live_overlays(
+                LCD,
                 textColour,
+                progress_segments=progress_segments,
+                phase_label=phase_label,
+                maximum_g=maximum_g,
             )
+            del draw_live_overlays
         LCD.write_time_centered(remaining, 82, textsize_rem, textColour)
         if isinstance(elapsed, tuple) and len(elapsed) == 2:
             LCD.write_time_centered(

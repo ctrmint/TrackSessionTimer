@@ -9,6 +9,9 @@ LIVE_LOOP_DELAY_SEC = 0.05
 # Native font size 7 is 74 px: the nearest available size to 10% above the
 # previous 64 px countdown (target 70.4 px).
 COUNTDOWN_TEXT_SIZE = 7
+PROGRESS_RING_SEGMENTS = 36
+TRACK_WARNING_START_NUMERATOR = 2
+TRACK_WARNING_START_DENOMINATOR = 3
 
 # RGB888 is used for interpolation so named colours remain predictable.  The
 # final value is converted to the byte-swapped RGB565 integer required when
@@ -137,6 +140,48 @@ def estimated_laps_display(remaining_seconds, avg_lap_time_seconds):
     return "LAP", value
 
 
+def progress_ring_segments(elapsed_seconds, duration_seconds):
+    """Return the bounded number of scheduled-time ring segments remaining."""
+    duration_seconds = int(duration_seconds)
+    if duration_seconds <= 0:
+        raise ValueError("duration_seconds must be positive")
+    elapsed_seconds = max(0, min(int(elapsed_seconds), duration_seconds))
+    remaining_seconds = duration_seconds - elapsed_seconds
+    return int(
+        ((remaining_seconds * PROGRESS_RING_SEGMENTS) + (duration_seconds // 2))
+        // duration_seconds
+    )
+
+
+def track_phase_label(
+    elapsed_seconds,
+    duration_seconds,
+    avg_lap_time_seconds=0,
+):
+    """Return an explicit track phase that does not rely on colour alone."""
+    duration_seconds = int(duration_seconds)
+    if duration_seconds <= 0:
+        raise ValueError("duration_seconds must be positive")
+    elapsed_seconds = max(0, int(elapsed_seconds))
+    if elapsed_seconds >= duration_seconds:
+        return "OVERRUN"
+
+    remaining_seconds = duration_seconds - elapsed_seconds
+    if (
+        isinstance(avg_lap_time_seconds, int)
+        and not isinstance(avg_lap_time_seconds, bool)
+        and avg_lap_time_seconds > 0
+        and remaining_seconds <= avg_lap_time_seconds
+    ):
+        return "FINAL LAP"
+    if (
+        elapsed_seconds * TRACK_WARNING_START_DENOMINATOR
+        >= duration_seconds * TRACK_WARNING_START_NUMERATOR
+    ):
+        return "WARNING"
+    return "TRACK"
+
+
 def track_live_frame(
     session,
     now,
@@ -146,7 +191,7 @@ def track_live_frame(
     avg_lap_time_seconds=0,
 ):
     """Return the track timer with a smooth proportional colour gradient."""
-    _, remaining_seconds = _visible_seconds(session, now)
+    elapsed_seconds, remaining_seconds = _visible_seconds(session, now)
     remaining, elapsed = _visible_times(session, now)
     if lower_display == "laps_remaining":
         laps_display = estimated_laps_display(
@@ -159,7 +204,6 @@ def track_live_frame(
         background_rgb = TRACK_OVERRUN_PURPLE_RGB
         remaining = "00:00"
     else:
-        elapsed_seconds = max(0, int(now - session.start_time))
         background_rgb = scheduled_track_rgb(
             elapsed_seconds,
             session.duration_secs,
@@ -178,6 +222,16 @@ def track_live_frame(
         background,
         text_colour,
         maximum_g,
+        progress_ring_segments(elapsed_seconds, session.duration_secs),
+        track_phase_label(
+            elapsed_seconds,
+            session.duration_secs,
+            avg_lap_time_seconds=(
+                avg_lap_time_seconds
+                if lower_display == "laps_remaining"
+                else 0
+            ),
+        ),
     )
 
 
@@ -185,6 +239,7 @@ def rest_live_frame(session, now, lcd):
     """Return visible rest-session values, or ``None`` when it is complete."""
     if now >= session.end_time:
         return None
+    elapsed_seconds, _ = _visible_seconds(session, now)
     remaining, elapsed = _visible_times(session, now)
     return (
         remaining,
@@ -193,12 +248,23 @@ def rest_live_frame(session, now, lcd):
         lcd.blue,
         None,
         None,
+        progress_ring_segments(elapsed_seconds, session.duration_secs),
+        "REST",
     )
 
 
 def draw_live_frame(touch, lcd, frame):
     """Render one frame tuple produced by a live-frame builder."""
-    remaining, elapsed, text_size, background, text_colour, maximum_g = frame
+    (
+        remaining,
+        elapsed,
+        text_size,
+        background,
+        text_colour,
+        maximum_g,
+        progress_segments,
+        phase_label,
+    ) = frame
     touch.LiveScreen(
         lcd,
         textsize_rem=text_size,
@@ -207,6 +273,8 @@ def draw_live_frame(touch, lcd, frame):
         elapsed=elapsed,
         remaining=remaining,
         maximum_g=maximum_g,
+        progress_segments=progress_segments,
+        phase_label=phase_label,
     )
 
 

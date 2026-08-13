@@ -4,6 +4,7 @@ import unittest
 from font_renderer import measure_text, pixel_height
 from live_display import (
     COUNTDOWN_TEXT_SIZE,
+    PROGRESS_RING_SEGMENTS,
     TRACK_AMBER_RGB,
     TRACK_GREEN_RGB,
     TRACK_OVERRUN_PURPLE_RGB,
@@ -12,11 +13,13 @@ from live_display import (
     estimated_laps_display,
     high_contrast_text_colour,
     interpolate_rgb,
+    progress_ring_segments,
     rest_live_frame,
     rgb_to_display565,
     run_live_display,
     scheduled_track_rgb,
     track_live_frame,
+    track_phase_label,
 )
 from timing import SessionTracker
 
@@ -75,9 +78,32 @@ class LiveDisplayTests(unittest.TestCase):
 
     def test_maximum_g_readout_fits_round_screen_safe_area(self):
         display_radius = 120
-        y_position = 40
-        text_height = pixel_height(2)
-        text_width = measure_text("MAX  99.99  g", 2, tabular_digits=True)
+        label_y = 45
+        value_y = 36
+        label_height = pixel_height(1)
+        value_height = pixel_height(3)
+        text_width = (
+            measure_text("MAX", 1)
+            + 8
+            + measure_text("99.99 g", 3, tabular_digits=True)
+        )
+
+        for edge_y in (value_y, value_y + value_height - 1):
+            distance_from_center = edge_y - display_radius
+            visible_width = 2 * math.sqrt(
+                (display_radius ** 2) - (distance_from_center ** 2)
+            )
+            self.assertLessEqual(text_width, visible_width)
+
+        self.assertEqual(12, label_height)
+        self.assertLess(label_y + label_height, value_y + value_height)
+        self.assertLess(value_y + value_height, 82)
+
+    def test_longest_phase_label_fits_above_maximum_g(self):
+        display_radius = 120
+        y_position = 18
+        text_height = pixel_height(1)
+        text_width = measure_text("FINAL LAP", 1)
 
         for edge_y in (y_position, y_position + text_height - 1):
             distance_from_center = edge_y - display_radius
@@ -85,8 +111,7 @@ class LiveDisplayTests(unittest.TestCase):
                 (display_radius ** 2) - (distance_from_center ** 2)
             )
             self.assertLessEqual(text_width, visible_width)
-
-        self.assertLess(y_position + text_height, 82)
+        self.assertLess(y_position + text_height, 36)
 
     def test_lap_label_and_enlarged_value_fit_without_touching_countdown(self):
         display_radius = 120
@@ -116,6 +141,31 @@ class LiveDisplayTests(unittest.TestCase):
         for invalid in (0, -1, True, 60.0, None, "60"):
             with self.subTest(invalid=invalid):
                 self.assertIsNone(estimated_laps_display(100, invalid))
+
+    def test_progress_ring_tracks_scheduled_time_and_clamps_at_both_ends(self):
+        self.assertEqual(PROGRESS_RING_SEGMENTS, progress_ring_segments(0, 60))
+        self.assertEqual(PROGRESS_RING_SEGMENTS, progress_ring_segments(-1, 60))
+        self.assertEqual(PROGRESS_RING_SEGMENTS // 2, progress_ring_segments(30, 60))
+        self.assertEqual(0, progress_ring_segments(60, 60))
+        self.assertEqual(0, progress_ring_segments(90, 60))
+        with self.assertRaises(ValueError):
+            progress_ring_segments(0, 0)
+
+    def test_phase_labels_identify_track_warning_final_lap_and_overrun(self):
+        duration = 600
+
+        self.assertEqual("TRACK", track_phase_label(0, duration))
+        self.assertEqual("TRACK", track_phase_label(399, duration))
+        self.assertEqual("WARNING", track_phase_label(400, duration))
+        self.assertEqual(
+            "FINAL LAP",
+            track_phase_label(510, duration, avg_lap_time_seconds=90),
+        )
+        self.assertEqual("OVERRUN", track_phase_label(600, duration, 90))
+        self.assertEqual("OVERRUN", track_phase_label(700, duration, 90))
+        self.assertEqual("WARNING", track_phase_label(510, duration, True))
+        with self.assertRaises(ValueError):
+            track_phase_label(0, 0)
 
     def test_simulated_session_redraws_at_most_once_per_visible_second(self):
         clock = FakeClock()
@@ -344,6 +394,12 @@ class LiveDisplayTests(unittest.TestCase):
         )
         self.assertEqual("MAX  0.00  g", start[5])
         self.assertEqual("MAX  2.34  g", overrun[5])
+        self.assertEqual(PROGRESS_RING_SEGMENTS, start[6])
+        self.assertEqual(progress_ring_segments(200, 600), one_third[6])
+        self.assertEqual(0, overrun[6])
+        self.assertEqual("TRACK", start[7])
+        self.assertEqual("WARNING", two_thirds[7])
+        self.assertEqual("OVERRUN", overrun[7])
 
     def test_track_frame_can_replace_elapsed_time_with_laps_remaining(self):
         lcd = FakeLCD()
@@ -367,6 +423,24 @@ class LiveDisplayTests(unittest.TestCase):
 
         self.assertEqual(("LAP", "6.7"), active[1])
         self.assertEqual(("LAP", "0.0"), overrun[1])
+
+        final_lap = track_live_frame(
+            session,
+            611,
+            lcd,
+            lower_display="laps_remaining",
+            avg_lap_time_seconds=90,
+        )
+        self.assertEqual("FINAL LAP", final_lap[7])
+
+        count_up = track_live_frame(
+            session,
+            611,
+            lcd,
+            lower_display="elapsed",
+            avg_lap_time_seconds=90,
+        )
+        self.assertEqual("WARNING", count_up[7])
 
     def test_unavailable_lap_estimate_falls_back_to_elapsed_time(self):
         lcd = FakeLCD()
@@ -393,6 +467,8 @@ class LiveDisplayTests(unittest.TestCase):
         self.assertEqual(COUNTDOWN_TEXT_SIZE, frame[2])
         self.assertEqual("00:00", frame[1])
         self.assertIsNone(frame[5])
+        self.assertEqual(PROGRESS_RING_SEGMENTS, frame[6])
+        self.assertEqual("REST", frame[7])
 
     def test_loop_delay_must_be_bounded(self):
         session = SessionTracker(duration_mins=1, live=True)

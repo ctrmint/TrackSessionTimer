@@ -16,6 +16,7 @@ TIMER_MODULES = (
     "hold_detector",
     "launch",
     "live_display",
+    "live_screen_graphics",
     "g_force",
     "ready_screen",
     "timing",
